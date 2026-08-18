@@ -1,0 +1,233 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <title>Maria's Orphans Planner</title>
+
+    <meta name="theme-color" content="#0f172a">
+    <meta name="description" content="Pick a date and a bar for the quarterly happy hour, without the group chat.">
+    <link rel="manifest" href="manifest.json">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <link rel="apple-touch-icon" href="icons/icon-192.png">
+
+    <script src="https://cdn.tailwindcss.com"></script>
+
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+
+    <script src="https://unpkg.com/lucide@latest"></script>
+
+    <script src="https://www.gstatic.com/firebasejs/11.10.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/11.10.0/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/11.10.0/firebase-firestore-compat.js"></script>
+
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: { sans: ['Inter', 'system-ui', 'sans-serif'] },
+                    animation: {
+                        'fade-in': 'fadeIn 0.5s ease-out',
+                        'slide-up': 'slideUp 0.5s ease-out',
+                        'pulse-glow': 'pulseGlow 2s ease-in-out infinite',
+                    },
+                    keyframes: {
+                        slideUp: {
+                            '0%': { transform: 'translateY(20px)', opacity: '0' },
+                            '100%': { transform: 'translateY(0)', opacity: '1' },
+                        },
+                        fadeIn: {
+                            '0%': { opacity: '0' },
+                            '100%': { opacity: '1' },
+                        },
+                        pulseGlow: {
+                            '0%, 100%': { opacity: '0.5' },
+                            '50%': { opacity: '0.8' },
+                        },
+                    },
+                },
+            },
+        }
+    </script>
+
+    <link rel="stylesheet" href="css/styles.css">
+</head>
+<body class="font-sans min-h-screen bg-slate-950 text-slate-100 antialiased">
+
+    <!-- Ambient background, same treatment as the projects hub -->
+    <div id="bg-gradient" class="fixed inset-0 -z-10 overflow-hidden pointer-events-none">
+        <div class="absolute -top-40 -left-40 w-96 h-96 rounded-full bg-violet-600/20 blur-3xl animate-pulse-glow"></div>
+        <div class="absolute top-1/3 -right-40 w-96 h-96 rounded-full bg-cyan-600/20 blur-3xl animate-pulse-glow" style="animation-delay: 1s;"></div>
+        <div class="absolute -bottom-40 left-1/4 w-96 h-96 rounded-full bg-indigo-600/10 blur-3xl animate-pulse-glow" style="animation-delay: 2s;"></div>
+    </div>
+
+    <!-- ================= Passcode gate ================= -->
+    <div id="gate" class="fixed inset-0 z-50 hidden items-center justify-center p-6 bg-slate-950/95 backdrop-blur-xl">
+        <div class="w-full max-w-sm glass rounded-3xl p-8 animate-slide-up">
+            <div class="flex justify-center mb-5">
+                <div class="p-3.5 rounded-2xl bg-gradient-to-br from-violet-600 to-cyan-600">
+                    <i data-lucide="martini" class="w-7 h-7 text-white"></i>
+                </div>
+            </div>
+            <h1 class="text-2xl font-bold text-center mb-1.5">Maria's Orphans</h1>
+            <p class="text-sm text-slate-400 text-center mb-7">Enter the group passcode to get in.</p>
+
+            <form id="gate-form" novalidate>
+                <input id="gate-input" type="password" inputmode="text" autocomplete="off"
+                       autocapitalize="none" spellcheck="false" placeholder="Passcode"
+                       class="w-full px-4 py-3.5 rounded-xl bg-white/5 border border-white/10 text-center tracking-wide
+                              placeholder:text-slate-500 focus:outline-none focus:border-violet-500/60 focus:bg-white/10 transition">
+                <p id="gate-error" class="hidden text-sm text-rose-400 text-center mt-3"></p>
+                <button type="submit"
+                        class="w-full mt-4 py-3.5 rounded-xl font-semibold bg-gradient-to-r from-violet-600 to-cyan-600
+                               hover:from-violet-500 hover:to-cyan-500 active:scale-[0.99] transition">
+                    Let me in
+                </button>
+            </form>
+        </div>
+    </div>
+
+    <!-- ================= Identity picker ================= -->
+    <div id="identity" class="fixed inset-0 z-40 hidden items-center justify-center p-6 bg-slate-950/95 backdrop-blur-xl">
+        <div class="w-full max-w-sm glass rounded-3xl p-8 animate-slide-up">
+            <h2 class="text-xl font-bold text-center mb-1.5">Who are you?</h2>
+            <p class="text-sm text-slate-400 text-center mb-7">So everyone knows whose vote is whose.</p>
+            <div id="identity-list" class="grid grid-cols-2 gap-2.5"></div>
+        </div>
+    </div>
+
+    <!-- ================= App ================= -->
+    <div id="app" class="hidden max-w-3xl mx-auto px-4 sm:px-6 py-6 sm:py-10">
+
+        <header class="mb-8">
+            <div class="flex items-start justify-between gap-3 mb-5">
+                <div class="flex items-center gap-3">
+                    <div class="p-2.5 rounded-xl bg-gradient-to-br from-violet-600 to-cyan-600 shrink-0">
+                        <i data-lucide="martini" class="w-5 h-5 text-white"></i>
+                    </div>
+                    <div>
+                        <h1 class="text-xl sm:text-2xl font-bold leading-tight">Maria's Orphans</h1>
+                        <p id="quarter-label" class="text-sm text-slate-400">&nbsp;</p>
+                    </div>
+                </div>
+                <div class="flex items-center gap-2 shrink-0">
+                    <button id="share-btn" title="Share the link"
+                            class="p-2.5 rounded-xl bg-white/5 border border-white/10 hover:bg-white/10 transition">
+                        <i data-lucide="share-2" class="w-4 h-4 text-slate-300"></i>
+                    </button>
+                    <button id="identity-btn" title="Switch who you are"
+                            class="flex items-center gap-2 pl-3 pr-3 py-2.5 rounded-xl bg-white/5 border border-white/10 hover:bg-white/10 transition">
+                        <span id="identity-name" class="text-sm font-medium"></span>
+                        <i data-lucide="chevron-down" class="w-3.5 h-3.5 text-slate-500"></i>
+                    </button>
+                </div>
+            </div>
+
+            <div id="banner" class="hidden mb-4"></div>
+            <div id="waiting-on"></div>
+        </header>
+
+        <!-- Winner -->
+        <section id="winner" class="mb-9"></section>
+
+        <!-- Dates -->
+        <section class="mb-9">
+            <div class="flex items-center justify-between mb-4">
+                <div class="flex items-center gap-2.5">
+                    <i data-lucide="calendar-days" class="w-[18px] h-[18px] text-violet-400"></i>
+                    <h2 class="text-lg font-semibold tracking-tight">When?</h2>
+                </div>
+                <button id="add-date-btn"
+                        class="flex items-center gap-1.5 text-sm font-medium px-3 py-1.5 rounded-lg bg-white/5 border border-white/10 hover:bg-white/10 transition">
+                    <i data-lucide="plus" class="w-3.5 h-3.5"></i> Propose a date
+                </button>
+            </div>
+
+            <form id="date-form" class="hidden glass rounded-2xl p-4 mb-4">
+                <div class="flex flex-col sm:flex-row gap-2.5">
+                    <input id="date-input" type="date" required
+                           class="flex-1 px-3.5 py-2.5 rounded-xl bg-white/5 border border-white/10 text-slate-100
+                                  focus:outline-none focus:border-violet-500/60 transition [color-scheme:dark]">
+                    <select id="time-input"
+                            class="sm:w-36 px-3.5 py-2.5 rounded-xl bg-white/5 border border-white/10 text-slate-100
+                                   focus:outline-none focus:border-violet-500/60 transition"></select>
+                </div>
+                <p id="date-error" class="hidden text-sm text-rose-400 mt-2.5"></p>
+                <div class="flex gap-2 mt-3">
+                    <button type="submit"
+                            class="flex-1 py-2.5 rounded-xl font-semibold text-sm bg-gradient-to-r from-violet-600 to-cyan-600
+                                   hover:from-violet-500 hover:to-cyan-500 active:scale-[0.99] transition">Add it</button>
+                    <button type="button" id="date-cancel"
+                            class="px-4 py-2.5 rounded-xl text-sm bg-white/5 border border-white/10 hover:bg-white/10 transition">Cancel</button>
+                </div>
+            </form>
+
+            <div id="date-list" class="space-y-3"></div>
+        </section>
+
+        <!-- Venues -->
+        <section class="mb-9">
+            <div class="flex items-center justify-between mb-4">
+                <div class="flex items-center gap-2.5">
+                    <i data-lucide="map-pin" class="w-[18px] h-[18px] text-cyan-400"></i>
+                    <h2 class="text-lg font-semibold tracking-tight">Where?</h2>
+                </div>
+                <button id="add-venue-btn"
+                        class="flex items-center gap-1.5 text-sm font-medium px-3 py-1.5 rounded-lg bg-white/5 border border-white/10 hover:bg-white/10 transition">
+                    <i data-lucide="plus" class="w-3.5 h-3.5"></i> Suggest a spot
+                </button>
+            </div>
+
+            <form id="venue-form" class="hidden glass rounded-2xl p-4 mb-4">
+                <input id="venue-name" type="text" required placeholder="Name of the place"
+                       class="w-full px-3.5 py-2.5 rounded-xl bg-white/5 border border-white/10 placeholder:text-slate-500
+                              focus:outline-none focus:border-cyan-500/60 transition">
+                <input id="venue-note" type="text" placeholder="Why? (optional)"
+                       class="w-full mt-2.5 px-3.5 py-2.5 rounded-xl bg-white/5 border border-white/10 placeholder:text-slate-500
+                              focus:outline-none focus:border-cyan-500/60 transition">
+                <input id="venue-url" type="url" inputmode="url" placeholder="Link — maps, menu (optional)"
+                       class="w-full mt-2.5 px-3.5 py-2.5 rounded-xl bg-white/5 border border-white/10 placeholder:text-slate-500
+                              focus:outline-none focus:border-cyan-500/60 transition">
+                <p id="venue-error" class="hidden text-sm text-rose-400 mt-2.5"></p>
+                <div class="flex gap-2 mt-3">
+                    <button type="submit"
+                            class="flex-1 py-2.5 rounded-xl font-semibold text-sm bg-gradient-to-r from-violet-600 to-cyan-600
+                                   hover:from-violet-500 hover:to-cyan-500 active:scale-[0.99] transition">Add it</button>
+                    <button type="button" id="venue-cancel"
+                            class="px-4 py-2.5 rounded-xl text-sm bg-white/5 border border-white/10 hover:bg-white/10 transition">Cancel</button>
+                </div>
+            </form>
+
+            <div id="venue-list" class="space-y-3"></div>
+        </section>
+
+        <!-- History -->
+        <section class="mb-8">
+            <button id="history-btn"
+                    class="flex items-center gap-2.5 text-sm text-slate-400 hover:text-slate-200 transition">
+                <i data-lucide="history" class="w-4 h-4"></i>
+                <span>Past quarters</span>
+                <i data-lucide="chevron-down" id="history-chevron" class="w-3.5 h-3.5"></i>
+            </button>
+            <div id="history-list" class="hidden mt-4 space-y-3"></div>
+        </section>
+
+        <footer class="pt-6 border-t border-white/5 flex items-center justify-between text-xs text-slate-500">
+            <span id="sync-chip" class="flex items-center gap-1.5"></span>
+            <span>v<span id="app-version"></span></span>
+        </footer>
+    </div>
+
+    <div id="toast" class="fixed bottom-5 left-1/2 -translate-x-1/2 z-[60] pointer-events-none"></div>
+
+    <script src="js/config.js"></script>
+    <script src="js/quarter.js"></script>
+    <script src="js/scoring.js"></script>
+    <script src="js/store.js"></script>
+    <script src="js/ics.js"></script>
+    <script src="js/app.js"></script>
+</body>
+</html>

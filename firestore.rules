@@ -1,0 +1,95 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // ---------------------------------------------------------------------
+    // Maria's Orphans Planner
+    // ---------------------------------------------------------------------
+    // One document per calendar quarter. Document id: "2026-Q3".
+    // Everything for that quarter -- date proposals, votes, venues, upvotes --
+    // lives inside that single document.
+    //
+    // AUTH MODEL, stated plainly: anonymous sign-in only. The group passcode is
+    // a client-side UX gate and is NOT enforced here, because it cannot be.
+    // Anyone who finds the public repo can copy FIREBASE_CONFIG, call
+    // signInAnonymously() and write here. These rules limit the BLAST RADIUS,
+    // not access:
+    //   - deletes are impossible, so history can never be destroyed
+    //   - hasOnly() on top-level keys, so the schema cannot be injected into
+    //   - size() caps, so nobody can run up a bill
+    //   - quarter identity and bounds are immutable after creation
+    // Worst realistic case is someone scribbling on the current quarter:
+    // visible, weird, and repairable from the console in thirty seconds.
+    //
+    // Rules cannot iterate map keys, so nothing here validates INSIDE
+    // dateProposals or venues. The client compensates by ignoring any voter
+    // name that is not in ROSTER (see rosterVotes() in js/scoring.js).
+    match /happy_hours/{quarterId} {
+
+      // KEEP IN SYNC with ROSTER in js/config.js.
+      function roster() {
+        return ['David', 'Maria', 'Luz', 'Laura', 'Bernice', 'Crisveth'];
+      }
+
+      function signedIn()       { return request.auth != null; }
+      function incoming()       { return request.resource.data; }
+      function validQuarterId() { return quarterId.matches('^20[0-9]{2}-Q[1-4]$'); }
+
+      // The empty skeleton written by whoever opens the app first in a quarter.
+      function validSkeleton() {
+        return incoming().keys().hasOnly([
+                 'quarterId', 'label', 'year', 'quarter', 'startDate', 'endDate',
+                 'status', 'schemaVersion', 'createdAt', 'createdBy',
+                 'dateProposals', 'venues', 'result', 'archivedAt', 'updatedAt'
+               ])
+            && incoming().keys().hasAll([
+                 'quarterId', 'label', 'status', 'schemaVersion',
+                 'dateProposals', 'venues'
+               ])
+            && incoming().quarterId == quarterId
+            && incoming().status == 'active'
+            && incoming().schemaVersion == 1
+            && incoming().dateProposals is map
+            && incoming().venues is map
+            && incoming().dateProposals.size() == 0
+            && incoming().venues.size() == 0
+            && (incoming().createdBy in roster() || incoming().createdBy == 'auto');
+      }
+
+      // Quarter identity and bounds can never be rewritten after creation.
+      function onlyMutableFieldsTouched() {
+        return incoming().diff(resource.data).affectedKeys().hasOnly([
+                 'dateProposals', 'venues', 'status', 'result', 'archivedAt', 'updatedAt'
+               ]);
+      }
+
+      // Volume guard rails. Six friends are never remotely close to these.
+      function withinLimits() {
+        return incoming().dateProposals is map
+            && incoming().venues is map
+            && incoming().dateProposals.size() <= 40
+            && incoming().venues.size() <= 40;
+      }
+
+      function validStatus() {
+        return incoming().status == 'active' || incoming().status == 'archived';
+      }
+
+      allow read:   if signedIn() && validQuarterId();
+      allow create: if signedIn() && validQuarterId() && validSkeleton();
+      allow update: if signedIn() && validQuarterId()
+                    && onlyMutableFieldsTouched()
+                    && withinLimits()
+                    && validStatus();
+
+      // History is append-only. Nothing is ever deleted.
+      allow delete: if false;
+    }
+
+    // Everything else is closed.
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}
