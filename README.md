@@ -87,6 +87,11 @@ this workspace.
 Send them the link and the passcode. The **share button** in the header copies
 both, formatted for pasting into the group text.
 
+The plaintext passcode is deliberately **not** anywhere in this repository — the
+repo is public, and a passcode written next to its own hash is not a passcode.
+The share button reads it from whatever that device typed at the gate, so only
+someone already inside can pass it on.
+
 ## Changing things
 
 ### The roster
@@ -111,9 +116,13 @@ crypto.subtle.digest('SHA-256', new TextEncoder().encode('YOUR-PASSCODE'))
     .map(x => x.toString(16).padStart(2, '0')).join('')))
 ```
 
-Paste it into `PASSCODE_SHA256` in `js/config.js`. Friends who are already in
-stay in — the gate only runs once per device. Also update the passcode in
-`App.share()` in `js/app.js`, which is what the share button pastes.
+Paste it into `PASSCODE_SHA256` in `js/config.js` — the digest only, never the
+passcode itself. Nothing else needs changing; the share button picks up the new
+passcode the next time someone types it at the gate.
+
+Friends already on the inside stay in, because the gate only runs once per
+device. To force everyone back through it, change the `LS_GATE` key in
+`CONFIG`.
 
 ### Times, limits, quarter behaviour
 

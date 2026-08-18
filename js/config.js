@@ -16,9 +16,11 @@ const ROSTER = ['David', 'Maria', 'Luz', 'Laura', 'Bernice', 'Crisveth'];
 // ---------------------------------------------------------------------------
 // GROUP PASSCODE
 // ---------------------------------------------------------------------------
-// SHA-256 hex digest of the shared passcode. The plaintext is never stored here.
-//
-// Current passcode: orphans2026
+// SHA-256 hex digest of the shared passcode. The plaintext must never appear
+// anywhere in this repository -- it is public, and writing the passcode in a
+// comment next to its own hash would make the hash pointless. The share button
+// gets the plaintext from whatever the person typed at the gate, which is
+// proof enough that they already know it.
 //
 // To change it, run this in any browser console and paste the result below:
 //   crypto.subtle.digest('SHA-256', new TextEncoder().encode('YOUR-PASSCODE'))
@@ -92,5 +94,6 @@ const CONFIG = {
     // localStorage keys.
     LS_GATE: 'mop_gate_ok',
     LS_IDENTITY: 'mop_identity',
+    LS_PASS: 'mop_pass',
     LS_MIRROR: 'mop_quarter_mirror'
 };

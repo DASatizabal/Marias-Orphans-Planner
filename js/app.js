@@ -507,6 +507,10 @@ const App = {
             const res = await this.checkPasscode(input.value);
             if (res.ok) {
                 localStorage.setItem(CONFIG.LS_GATE, '1');
+                // Kept so the share button can paste the passcode into the group
+                // text. Typing it correctly is proof they already know it, which
+                // is why the plaintext never has to live in this public repo.
+                localStorage.setItem(CONFIG.LS_PASS, input.value.trim());
                 const gate = document.getElementById('gate');
                 gate.classList.add('hidden');
                 gate.classList.remove('flex');
@@ -682,7 +686,11 @@ const App = {
     // ---- share ----------------------------------------------------------
 
     async share() {
-        const text = `${CONFIG.APP_NAME}\n${CONFIG.APP_URL}\nPasscode: orphans2026`;
+        // Only include the passcode if this device typed it at the gate. Anyone
+        // who cleared storage or was let in by an older build just shares the
+        // link, which is the safe failure.
+        const pass = localStorage.getItem(CONFIG.LS_PASS);
+        const text = `${CONFIG.APP_NAME}\n${CONFIG.APP_URL}` + (pass ? `\nPasscode: ${pass}` : '');
         if (navigator.share) {
             try {
                 await navigator.share({ title: CONFIG.APP_NAME, text, url: CONFIG.APP_URL });
