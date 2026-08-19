@@ -92,6 +92,11 @@
                     Let me in
                 </button>
             </form>
+
+            <!-- Version on the gate as well as the footer: the footer one sits
+                 behind the passcode, which is useless for the most common
+                 question ("did my change actually deploy?"). -->
+            <p class="text-center text-xs text-slate-600 mt-6">v<span class="app-version"></span></p>
         </div>
     </div>
 
@@ -222,7 +227,7 @@
 
         <footer class="pt-6 border-t border-white/5 flex items-center justify-between text-xs text-slate-500">
             <span id="sync-chip" class="flex items-center gap-1.5"></span>
-            <span>v<span id="app-version"></span></span>
+            <span>v<span class="app-version"></span></span>
         </footer>
     </div>
 

@@ -23,7 +23,8 @@ const App = {
     // =====================================================================
 
     async start() {
-        document.getElementById('app-version').textContent = APP_VERSION;
+        // Rendered in two places: the gate card and the app footer.
+        document.querySelectorAll('.app-version').forEach(el => { el.textContent = APP_VERSION; });
         this.wireStaticEvents();
         this.registerServiceWorker();
 
