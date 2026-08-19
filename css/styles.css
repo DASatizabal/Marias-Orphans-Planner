@@ -19,6 +19,20 @@ body {
 /* Overlays are .hidden in markup; JS swaps to .flex. */
 #gate.flex, #identity.flex { display: flex; }
 
+/* If the browser autofills anyway, keep the field dark. Chrome paints its own
+   pale yellow/white background on autofilled inputs and ignores background-color,
+   so the only way to override it is an enormous inset shadow plus a text-fill
+   colour. The absurd transition delay stops it repainting on focus. */
+input:-webkit-autofill,
+input:-webkit-autofill:hover,
+input:-webkit-autofill:focus,
+input:-webkit-autofill:active {
+    -webkit-text-fill-color: #f1f5f9;
+    -webkit-box-shadow: 0 0 0 1000px #16203a inset;
+    caret-color: #f1f5f9;
+    transition: background-color 9999s ease-in-out 0s;
+}
+
 /* ---- Vote segmented control -------------------------------------------
    Three tap targets sharing one track. Deliberately >=44px tall: this gets
    used one-handed, on a phone, in a dark bar. */

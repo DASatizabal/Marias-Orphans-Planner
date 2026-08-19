@@ -76,7 +76,12 @@
             <p class="text-sm text-slate-400 text-center mb-7">Enter the group passcode to get in.</p>
 
             <form id="gate-form" novalidate>
-                <input id="gate-input" type="password" inputmode="text" autocomplete="off"
+                <!-- autocomplete="new-password" rather than "off": Chrome ignores
+                     "off" on password fields. Every app on dasatizabal.github.io
+                     shares one origin, so without this the browser offers
+                     credentials saved for a completely different app here. -->
+                <input id="gate-input" type="password" inputmode="text"
+                       name="mop-gate" autocomplete="new-password"
                        autocapitalize="none" spellcheck="false" placeholder="Passcode"
                        class="w-full px-4 py-3.5 rounded-xl bg-white/5 border border-white/10 text-center tracking-wide
                               placeholder:text-slate-500 focus:outline-none focus:border-violet-500/60 focus:bg-white/10 transition">

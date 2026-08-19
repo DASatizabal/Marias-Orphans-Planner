@@ -1,7 +1,7 @@
 // Configuration for Maria's Orphans Planner
 // Quarterly happy-hour date + venue voting for a fixed group of friends.
 
-const APP_VERSION = '1.0.0';
+const APP_VERSION = '1.0.1';
 
 // ---------------------------------------------------------------------------
 // THE ROSTER
