@@ -36,17 +36,34 @@ const PASSCODE_SHA256 = '6efd735ab8920ba21e5e5dd3e5c461d02588657cc24b4c6b5cd1503
 // ---------------------------------------------------------------------------
 // FIREBASE
 // ---------------------------------------------------------------------------
-// To set up (about 10 minutes, one time):
-// 1. Go to https://console.firebase.google.com -> Add project
-//    Name it "happy-hour-planner". DISABLE Google Analytics.
-// 2. Build > Authentication > Get started > Sign-in method > Anonymous > Enable
-//    (Skipping this yields auth/operation-not-allowed and a blank app.)
-// 3. Build > Firestore Database > Create database > PRODUCTION MODE (not test)
-//    Location: nam5 (us-central). This is permanent and cannot be changed.
-// 4. Gear icon > Project settings > Your apps > Web </> > register the app.
-//    Do NOT enable Firebase Hosting. Copy the six values into the object below.
-// 5. Authentication > Settings > Authorized domains > Add: dasatizabal.github.io
-// 6. Firestore > Rules tab > paste the contents of firestore.rules > Publish
+// To set up (about 15 minutes, one time):
+//
+// NAV NOTE: the Firebase console has no "Build" section any more -- the left nav
+// is grouped into "Product categories". Authentication is under SECURITY, and
+// Firestore is under DATABASES & STORAGE. Most tutorials still say "Build".
+// The "Search for products" box at the top of the nav is faster either way.
+//
+// 1. https://console.firebase.google.com -> Add project
+//    Name it "happy-hour-planner". DISABLE Google Analytics (on by default).
+// 2. Security > Authentication > Get started > Sign-in method tab >
+//    Anonymous > Enable > Save.
+//    (Skipping this yields auth/operation-not-allowed and an app that hangs.)
+// 3. Databases & Storage > Firestore Database > Create database.
+//    Location nam5 (us-central) -- permanent, cannot be changed later.
+//    PRODUCTION MODE, not test mode: test mode expires after 30 days and would
+//    break the app mid-quarter. Stay on the Spark (free) plan.
+// 4. Settings > Project settings > Your apps > Web </> > Register app.
+//    Do NOT tick "Also set up Firebase Hosting" -- this app is on GitHub Pages.
+//    Copy the six values into the object below.
+// 5. Security > Authentication > Settings tab > Authorized domains >
+//    Add domain: dasatizabal.github.io
+// 6. Databases & Storage > Firestore Database > Rules tab >
+//    paste the contents of firestore.rules > PUBLISH (the editor holds an
+//    unsaved draft locally and looks saved when it is not).
+//
+// The apiKey below is public, and that is fine -- Firebase web API keys identify
+// the project, they do not authorize anything. The rules file is the access
+// control.
 const FIREBASE_CONFIG = {
     apiKey: 'YOUR_API_KEY',
     authDomain: 'YOUR_PROJECT_ID.firebaseapp.com',

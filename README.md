@@ -61,20 +61,45 @@ One-time, roughly fifteen minutes.
 
 ### 1. Firebase
 
+> **Console navigation note.** Firebase reorganized its left nav into *Product
+> categories*; there is no longer a **Build** section, which is what most
+> tutorials still tell you to look for. Authentication now lives under
+> **Security**, and Firestore under **Databases & Storage**. The
+> *Search for products* box at the top of the nav is the fastest route either
+> way — type "authentication" or "firestore".
+
 1. [console.firebase.google.com](https://console.firebase.google.com) → **Add project**
-   → name it `happy-hour-planner` → **disable** Google Analytics.
-2. **Build → Authentication → Get started → Sign-in method → Anonymous → Enable → Save.**
-   Skipping this gives you `auth/operation-not-allowed` and a blank page.
-3. **Build → Firestore Database → Create database → Production mode** (not test
-   mode) → location **`nam5 (us-central)`**. The location is permanent.
-4. **Gear → Project settings → Your apps → Web `</>`** → register the app → do
-   **not** enable Firebase Hosting → copy the six values into `FIREBASE_CONFIG`
-   in [`js/config.js`](js/config.js).
-5. **Authentication → Settings → Authorized domains → Add** `dasatizabal.github.io`.
-6. **Firestore → Rules** → paste [`firestore.rules`](firestore.rules) → **Publish**.
+   → name it `happy-hour-planner` → **disable** Google Analytics (it is on by
+   default and you do not need it). Note the real project ID Firebase assigns —
+   if the name is taken it appends a suffix.
+2. **Security → Authentication → Get started → Sign-in method** tab →
+   **Anonymous** (near the bottom of the native providers) → **Enable** → **Save**.
+   This is the step everyone skips. Without it the page loads and then sits
+   there, and the console says `auth/operation-not-allowed`.
+3. **Databases & Storage → Firestore Database → Create database** →
+   location **`nam5 (us-central)`** (permanent, cannot be changed later) →
+   **Production mode**, not test mode. Test mode writes a rule that expires in
+   30 days, so the app would work fine and then abruptly stop mid-quarter.
+   Stay on the **Spark (free)** plan.
+4. **Settings → Project settings → Your apps → Web `</>`** → nickname it →
+   **do not** tick "Also set up Firebase Hosting" (this app is on GitHub Pages;
+   Hosting only gives you a second, confusingly empty deploy target) →
+   **Register app** → copy the six values into `FIREBASE_CONFIG` in
+   [`js/config.js`](js/config.js).
+5. **Security → Authentication → Settings** tab → **Authorized domains** →
+   **Add domain** → `dasatizabal.github.io`. (`localhost` is there by default.)
+   Skip this and you get `auth/unauthorized-domain`.
+6. **Databases & Storage → Firestore Database → Rules** tab → replace everything
+   with [`firestore.rules`](firestore.rules) → **Publish**. The editor keeps an
+   unsaved draft locally and looks saved when it is not, so confirm the Publish
+   actually went through.
    (`firebase.json` and `.firebaserc` ship too, so
    `firebase deploy --only firestore:rules` works later if you want it repeatable.
    Put your real project id in `.firebaserc` first.)
+
+The API key ends up in this public repo, which is fine: Firebase web API keys
+identify the project, they do not authorize anything. The rules in step 6 are
+what actually controls access.
 
 ### 2. GitHub Pages
 
