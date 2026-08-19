@@ -31,7 +31,7 @@ const ROSTER = ['David', 'Maria', 'Luz', 'Laura', 'Bernice', 'Crisveth'];
 // passcode is brute-forceable by anyone motivated. It exists so a casual
 // browser of this public repo can't read the passcode straight off the line.
 // It is a UX gate, not security. See README.md > "Security model".
-const PASSCODE_SHA256 = '6efd735ab8920ba21e5e5dd3e5c461d02588657cc24b4c6b5cd1503855f9e8f2';
+const PASSCODE_SHA256 = 'c344156e1fb7d2b7d99a217976b853ede0d1d4a7ce3e11827d6e0b99f1115abf';
 
 // ---------------------------------------------------------------------------
 // FIREBASE
@@ -64,13 +64,16 @@ const PASSCODE_SHA256 = '6efd735ab8920ba21e5e5dd3e5c461d02588657cc24b4c6b5cd1503
 // The apiKey below is public, and that is fine -- Firebase web API keys identify
 // the project, they do not authorize anything. The rules file is the access
 // control.
+// NOTE: the Firebase console hands you this block as `const firebaseConfig`.
+// The app reads FIREBASE_CONFIG, so keep this name when you paste a new one --
+// otherwise Store.isConfigured() throws a ReferenceError and nothing loads.
 const FIREBASE_CONFIG = {
-    apiKey: 'YOUR_API_KEY',
-    authDomain: 'YOUR_PROJECT_ID.firebaseapp.com',
-    projectId: 'YOUR_PROJECT_ID',
-    storageBucket: 'YOUR_PROJECT_ID.firebasestorage.app',
-    messagingSenderId: 'YOUR_SENDER_ID',
-    appId: 'YOUR_APP_ID'
+    apiKey: 'AIzaSyDLMTaUWx0cG3HHKexihQGqZ77XUCnzGjQ',
+    authDomain: 'happy-hour-planner.firebaseapp.com',
+    projectId: 'happy-hour-planner',
+    storageBucket: 'happy-hour-planner.firebasestorage.app',
+    messagingSenderId: '1029129273055',
+    appId: '1:1029129273055:web:e0de843a21c558a1ee336a'
 };
 
 // ---------------------------------------------------------------------------
