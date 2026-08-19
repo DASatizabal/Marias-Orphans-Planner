@@ -93,6 +93,16 @@ input:-webkit-autofill:active {
 .name-chip:hover  { background: rgba(255, 255, 255, 0.09); border-color: rgba(139, 92, 246, 0.5); }
 .name-chip:active { transform: scale(0.98); }
 
+/* ---- Native select popup ------------------------------------------------
+   The option list is drawn by the OS, not by us. color-scheme:dark on the
+   select (set in the markup) is what makes the browser paint that popup dark;
+   these rules are the fallback for engines that ignore it, because the text
+   colour is near-white and a white popup makes it unreadable. */
+select option {
+    background-color: #1e293b;
+    color: #f1f5f9;
+}
+
 /* ---- Multi-select date grid --------------------------------------------
    Tap toggles a date, taps accumulate, and press-and-drag paints the
    rectangle between two cells -- Wed Aug 5 down-right to Fri Aug 28 gives

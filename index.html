@@ -167,9 +167,12 @@
                     <button type="button" id="date-clear"
                             class="hidden text-sm px-2.5 py-2 rounded-lg text-slate-400 hover:text-slate-200
                                    hover:bg-white/5 transition">Clear</button>
+                    <!-- [color-scheme:dark] is not decoration: without it the
+                         browser paints the native option popup white, and the
+                         near-white text set here is invisible against it. -->
                     <select id="time-input"
                             class="sm:w-36 px-3.5 py-2.5 rounded-xl bg-white/5 border border-white/10 text-slate-100
-                                   focus:outline-none focus:border-violet-500/60 transition"></select>
+                                   focus:outline-none focus:border-violet-500/60 transition [color-scheme:dark]"></select>
                 </div>
                 <p id="date-error" class="hidden text-sm text-rose-400 mt-2.5"></p>
                 <div class="flex gap-2 mt-3">
