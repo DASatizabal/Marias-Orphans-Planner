@@ -1,8 +1,9 @@
-// Pure-logic tests for quarter.js and scoring.js.
+// Pure-logic tests for quarter.js, scoring.js and the calendar grid math.
 // Run: node tests/logic.test.js   (no dependencies, no framework)
 
 const Q = require('../js/quarter.js');
 const S = require('../js/scoring.js');
+const C = require('../js/calendar.js');
 const R = ['David','Maria','Luz','Laura','Bernice','Crisveth'];
 let fail = 0;
 const eq = (a,b,m) => { const A=JSON.stringify(a),B=JSON.stringify(b);
@@ -88,6 +89,39 @@ eq([rv[0].id,rv[0].count,rv[1].count],['p',2,1],'venue ranking ignores off-roste
 // a lone proposal is never "decisive": someone can still add a new date
 eq(S.confidence(S.rankProposals({x:{date:'2026-09-12',votes:Object.fromEntries(R.map(n=>[n,'yes']))}},R),R).decisive,
    false,'single proposal is not decisive');
+
+// --- calendar grid math ---
+// August 2026 starts on a Saturday, so the 1st sits in the last column and
+// every row below it is a full week. Good month for the rectangle cases.
+const d = n => `2026-08-${String(n).padStart(2,'0')}`;
+
+// THE case this feature exists for: press Wed Aug 5, drag down-right to Fri
+// Aug 28, get every Wed/Thu/Fri in those four weeks -- 12 dates, not the 24
+// days in between.
+eq(C.rectBetween('2026-08-05','2026-08-28'),
+   [5,6,7,12,13,14,19,20,21,26,27,28].map(d),'drag Wed 5 -> Fri 28 = every Wed/Thu/Fri');
+eq(C.rectBetween('2026-08-28','2026-08-05'),C.rectBetween('2026-08-05','2026-08-28'),
+   'drag is order-independent');
+eq(C.rectBetween('2026-08-05','2026-08-05'),['2026-08-05'],'a tap is a 1x1 rectangle');
+eq(C.rectBetween('2026-08-07','2026-08-28'),[7,14,21,28].map(d),'one column = every Friday');
+eq(C.rectBetween('2026-08-09','2026-08-15'),[9,10,11,12,13,14,15].map(d),'one row = one week');
+eq(C.rectBetween('2026-08-28','2026-09-02'),[],'a drag never crosses a month');
+
+// grid geometry
+eq(C.cellOf('2026-08-05'),{y:2026,m:8,d:5,index:10,row:1,col:3},'Aug 5 2026 is row 1, Wed');
+eq(C.firstWeekday(2026,8),6,'Aug 1 2026 is a Saturday');
+eq(C.firstWeekday(2026,2),0,'Feb 1 2026 is a Sunday -- no leading blanks');
+eq(C.monthCells(2026,2).length,28,'a 28-day month starting Sunday trims to 4 rows');
+eq(C.monthCells(2026,8).filter(Boolean).length,31,'August has 31 real cells');
+eq(C.monthCells(2026,8)[0],null,'August leads with a blank');
+
+// The reason every step above is arithmetic on the day NUMBER: March 8 2026 is
+// the US DST jump. Stepping days by adding 86400000 skips or repeats one here.
+const mar = C.rectBetween('2026-03-08','2026-03-14');
+eq(mar.length,7,'DST week has 7 cells');
+eq(new Set(mar).size,7,'DST week has no repeated date');
+eq(mar[0],'2026-03-08','DST week starts on the 8th');
+eq(mar[6],'2026-03-14','DST week ends on the 14th');
 
 console.log(fail ? `\n${fail} FAILED` : '\nAll passed');
 process.exit(fail?1:0);

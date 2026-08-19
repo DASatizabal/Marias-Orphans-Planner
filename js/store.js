@@ -176,23 +176,60 @@ const Store = {
         return firebase.firestore.FieldValue.serverTimestamp();
     },
 
-    async addProposal(quarterId, opts) {
-        const id = this._id('d_');
-        const votes = {};
-        // The proposer's own yes is implied -- nobody suggests a date they
-        // cannot make, and making them tap twice is friction for no information.
-        votes[opts.proposedBy] = 'yes';
-        await this._doc(quarterId).update(
-            new firebase.firestore.FieldPath('dateProposals', id), {
+    /**
+     * Add one or many proposals in a SINGLE update().
+     *
+     * The calendar hands over a whole drag at once -- twelve dates is ordinary
+     * -- and twelve sequential writes would be twelve snapshots, twelve partial
+     * states on everyone else's phone, and twelve chances to half-fail. One
+     * update() with every FieldPath spread as an argument lands atomically and
+     * still obeys THE ONE RULE at the top of this file: every address is a
+     * FieldPath, so the write merges server-side and cannot clobber a vote cast
+     * in the same second.
+     *
+     * Returns the new ids, in the order given.
+     */
+    async addProposals(quarterId, list) {
+        const args = [];
+        const ids = [];
+        const seen = new Set();
+        // A whole batch is generated inside one millisecond, so _id()'s
+        // Date.now() half is identical across it and only the random suffix
+        // separates them. Cheap insurance against the one-in-a-lot collision.
+        const stamp = new Date().toISOString();
+
+        list.forEach(opts => {
+            let id = this._id('d_');
+            while (seen.has(id)) id = this._id('d_');
+            seen.add(id);
+            ids.push(id);
+
+            const votes = {};
+            // The proposer's own yes is implied -- nobody suggests a date they
+            // cannot make, and making them tap twice is friction for no
+            // information.
+            votes[opts.proposedBy] = 'yes';
+
+            args.push(new firebase.firestore.FieldPath('dateProposals', id), {
                 date: opts.date,
                 time: opts.time,
                 proposedBy: opts.proposedBy,
-                createdAt: new Date().toISOString(),
+                // Every date in a batch shares one createdAt. Harmless: the
+                // tie-break chain reaches "earlier date" (4) before it reaches
+                // createdAt (5), and a batch is all distinct dates.
+                createdAt: stamp,
                 votes: votes
-            },
-            new firebase.firestore.FieldPath('updatedAt'), this._touch()
-        );
-        return id;
+            });
+        });
+
+        args.push(new firebase.firestore.FieldPath('updatedAt'), this._touch());
+        await this._doc(quarterId).update(...args);
+        return ids;
+    },
+
+    async addProposal(quarterId, opts) {
+        const ids = await this.addProposals(quarterId, [opts]);
+        return ids[0];
     },
 
     async removeProposal(quarterId, proposalId) {

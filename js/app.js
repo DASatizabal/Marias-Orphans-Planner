@@ -181,13 +181,19 @@ const App = {
     // =====================================================================
 
     /**
-     * Never re-render while someone is typing. A friend casting a vote pushes a
-     * snapshot to everyone, and without this guard that snapshot yanks the
-     * venue name out from under whoever is mid-sentence.
+     * Never re-render while someone is typing, or mid-drag on the calendar. A
+     * friend casting a vote pushes a snapshot to everyone, and without this
+     * guard that snapshot yanks the venue name out from under whoever is
+     * mid-sentence -- or drops the dates out from under a finger still moving
+     * across the grid.
      */
     render() {
         const el = document.activeElement;
         if (el && ['INPUT', 'SELECT', 'TEXTAREA'].includes(el.tagName)) {
+            this._pendingRender = true;
+            return;
+        }
+        if (Calendar.isDragging()) {
             this._pendingRender = true;
             return;
         }
@@ -229,9 +235,35 @@ const App = {
             document.getElementById('date-form').classList.add('hidden');
             document.getElementById('venue-form').classList.add('hidden');
         }
-        const di = document.getElementById('date-input');
-        di.min = bounds.min;
-        di.max = bounds.max;
+        if (!bounds.proposable) return;
+
+        // Dates already on the board at the time currently picked. The grid
+        // marks them with a dot but leaves them selectable -- one existing
+        // date must not veto a twelve-cell drag.
+        const time = document.getElementById('time-input').value;
+        const proposals = (this.state.data && this.state.data.dateProposals) || {};
+        const taken = new Set(
+            Object.values(proposals).filter(p => p.time === time).map(p => p.date)
+        );
+        Calendar.refresh({ min: bounds.min, max: bounds.max, taken });
+    },
+
+    /** The count line, the Clear button and the submit label all follow the set. */
+    renderDateSelection(dates) {
+        const count = dates.length;
+        const countEl = document.getElementById('date-count');
+        const clearEl = document.getElementById('date-clear');
+        const submit = document.getElementById('date-submit');
+
+        countEl.textContent = count === 0
+            ? 'Tap nights, or drag across them.'
+            : count === 1
+                ? `${Quarter.prettyDate(dates[0])} picked.`
+                : `${count} nights picked — ${Quarter.prettyDate(dates[0])} to ${Quarter.prettyDate(dates[count - 1])}.`;
+
+        clearEl.classList.toggle('hidden', count === 0);
+        submit.disabled = count === 0;
+        submit.textContent = count > 1 ? `Add ${count} dates` : 'Add it';
     },
 
     // ---- waiting on -----------------------------------------------------
@@ -532,20 +564,29 @@ const App = {
 
         // Date form
         const dateForm = document.getElementById('date-form');
+        Calendar.mount(document.getElementById('date-calendar'), {
+            onChange: dates => this.renderDateSelection(dates)
+        });
         document.getElementById('add-date-btn').addEventListener('click', () => {
             dateForm.classList.toggle('hidden');
-            if (!dateForm.classList.contains('hidden')) {
-                const b = Quarter.proposalBounds(this.state.info);
-                const di = document.getElementById('date-input');
-                di.min = b.min; di.max = b.max;
-                di.focus();
-            }
+            // The calendar keeps its own bounds; renderFormAvailability feeds
+            // them in on every render, including the one that just ran.
+        });
+        document.getElementById('date-clear').addEventListener('click', () => {
+            Calendar.clear();
+            this.hideError('date-error');
         });
         document.getElementById('date-cancel').addEventListener('click', () => {
             dateForm.classList.add('hidden');
+            Calendar.clear();
             this.hideError('date-error');
         });
         dateForm.addEventListener('submit', e => { e.preventDefault(); this.submitDate(); });
+
+        // Changing the time changes which dates count as already proposed.
+        document.getElementById('time-input').addEventListener('change', () => {
+            this.renderFormAvailability();
+        });
 
         // Venue form
         const venueForm = document.getElementById('venue-form');
@@ -608,25 +649,51 @@ const App = {
     },
 
     async submitDate() {
-        const date = document.getElementById('date-input').value;
+        const dates = Calendar.selected();
         const time = document.getElementById('time-input').value;
-        const check = Quarter.validateDate(date, this.state.info);
-        if (!check.ok) return this.showError('date-error', check.error);
+        if (!dates.length) return this.showError('date-error', 'Pick at least one night.');
+
+        // Mobile browsers did not always enforce the old input's min/max, and a
+        // tab left open across midnight can still be holding yesterday. Cheap
+        // enough to re-check every date rather than trust the grid.
+        for (const d of dates) {
+            const check = Quarter.validateDate(d, this.state.info);
+            if (!check.ok) return this.showError('date-error', check.error);
+        }
 
         const existing = Object.values(this.state.data ? this.state.data.dateProposals : {});
-        if (existing.some(p => p.date === date && p.time === time)) {
-            return this.showError('date-error', 'That exact date and time is already up there.');
+        // Same date at a different time is a genuinely different proposal, so
+        // the dupe check stays on the pair. Dupes are skipped, not fatal --
+        // refusing a twelve-date drag over one collision would be maddening.
+        const dupes = new Set(existing.filter(p => p.time === time).map(p => p.date));
+        const fresh = dates.filter(d => !dupes.has(d));
+
+        if (!fresh.length) {
+            return this.showError('date-error', dates.length === 1
+                ? 'That exact date and time is already up there.'
+                : 'All of those are already up there at that time.');
         }
-        if (existing.length >= CONFIG.MAX_PROPOSALS) {
-            return this.showError('date-error', 'That is plenty of dates already.');
+        if (existing.length + fresh.length > CONFIG.MAX_PROPOSALS) {
+            const room = CONFIG.MAX_PROPOSALS - existing.length;
+            return this.showError('date-error', room > 0
+                ? `Room for ${room} more date${room === 1 ? '' : 's'}, and that is ${fresh.length}.`
+                : 'That is plenty of dates already.');
         }
 
         this.hideError('date-error');
         try {
-            await Store.addProposal(this.state.quarterId, { date, time, proposedBy: this.state.me });
+            await Store.addProposals(this.state.quarterId,
+                fresh.map(date => ({ date, time, proposedBy: this.state.me })));
             document.getElementById('date-form').classList.add('hidden');
-            document.getElementById('date-input').value = '';
-            this.toast('Date added — you are down as a yes.');
+            Calendar.clear();
+
+            const skipped = dates.length - fresh.length;
+            const added = fresh.length === 1
+                ? 'Date added'
+                : `${fresh.length} dates added`;
+            this.toast(skipped
+                ? `${added} — ${skipped} ${skipped === 1 ? 'was' : 'were'} already up there.`
+                : `${added} — you are down as a yes.`);
         } catch (err) { this.writeFailed(err); }
     },
 

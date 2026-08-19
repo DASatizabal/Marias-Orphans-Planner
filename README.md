@@ -17,9 +17,13 @@ archived so you keep a record of where you went.
   device. No accounts, no Google sign-in, no friction.
 - **Passcode.** One shared passcode gates the page. It is a UX gate, not
   security — see [Security model](#security-model).
-- **Dates.** Anyone proposes a date and an evening time inside the current
-  quarter, from today forward. Everyone marks **Yes / Maybe / No**. Votes are
-  changeable at any time — tap the value you already picked to clear it.
+- **Dates.** Anyone proposes nights on a calendar, at an evening time, inside
+  the current quarter from today forward. Tap a night to pick it, tap again to
+  drop it, and tap as many as you like. **Press and drag** to sweep a block:
+  from Wed Aug 5 down-right to Fri Aug 28 picks every Wednesday, Thursday and
+  Friday in those four weeks — twelve nights in one gesture, all added at once.
+  Everyone then marks each one **Yes / Maybe / No**. Votes are changeable at any
+  time — tap the value you already picked to clear it.
 - **Venues.** Anyone suggests a place with an optional note and link. Everyone
   upvotes. Suggesting counts as an upvote.
 - **The winner is automatic.** Yes = 2 points, Maybe = 1, No = 0. Highest score
@@ -198,6 +202,14 @@ GitHub Pages is the most reliable way to strand your friends on a stale build.
 Firebase hosts are skipped entirely so the Firestore SDK's own transport and
 offline persistence are left alone.
 
+**The calendar drag paints a rectangle, not a run of days.** Wed Aug 5 to Fri
+Aug 28 selects every Wed/Thu/Fri in those four weeks, not the 24 consecutive
+days between them. That is deliberate: "the next few Wednesday-to-Friday
+evenings" is the shape a group actually proposes, and a linear range is not.
+The grid math is pure, lives in `js/calendar.js`, and that exact case is a
+test. One drag becomes one `update()` via `Store.addProposals` -- never a
+loop of single writes, which would push a partial board to everyone else.
+
 **Dates are local-time `YYYY-MM-DD` strings, always.** Never `toISOString()`
 them, never `new Date('2026-09-30')`. The first shifts to UTC and pushes a Sep 30
 evening into Q4; the second parses as UTC midnight and renders as Sep 29 in US
@@ -217,6 +229,7 @@ js/config.js        roster, passcode hash, Firebase config, settings   <- the fi
 js/quarter.js       pure: quarter math, local-date formatting
 js/scoring.js       pure: ranking, tie-breaks, confidence
 js/store.js         the only file that touches Firebase
+js/calendar.js      the multi-select date grid: tap, multi-tap, drag a block
 js/ics.js           calendar export
 js/app.js           state, rendering, events
 firestore.rules     security rules (paste into the console)

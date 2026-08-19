@@ -152,24 +152,32 @@
                 </div>
                 <button id="add-date-btn"
                         class="flex items-center gap-1.5 text-sm font-medium px-3 py-1.5 rounded-lg bg-white/5 border border-white/10 hover:bg-white/10 transition">
-                    <i data-lucide="plus" class="w-3.5 h-3.5"></i> Propose a date
+                    <i data-lucide="plus" class="w-3.5 h-3.5"></i> Propose dates
                 </button>
             </div>
 
             <form id="date-form" class="hidden glass rounded-2xl p-4 mb-4">
-                <div class="flex flex-col sm:flex-row gap-2.5">
-                    <input id="date-input" type="date" required
-                           class="flex-1 px-3.5 py-2.5 rounded-xl bg-white/5 border border-white/10 text-slate-100
-                                  focus:outline-none focus:border-violet-500/60 transition [color-scheme:dark]">
+                <!-- Grid is built by js/calendar.js. Every cell it renders is
+                     type="button" on purpose: a bare <button> inside a <form>
+                     defaults to submit, so tapping a date would submit. -->
+                <div id="date-calendar" class="mb-3"></div>
+
+                <div class="flex items-center gap-2.5">
+                    <p id="date-count" class="flex-1 text-sm text-slate-400">Tap nights, or drag across them.</p>
+                    <button type="button" id="date-clear"
+                            class="hidden text-sm px-2.5 py-2 rounded-lg text-slate-400 hover:text-slate-200
+                                   hover:bg-white/5 transition">Clear</button>
                     <select id="time-input"
                             class="sm:w-36 px-3.5 py-2.5 rounded-xl bg-white/5 border border-white/10 text-slate-100
                                    focus:outline-none focus:border-violet-500/60 transition"></select>
                 </div>
                 <p id="date-error" class="hidden text-sm text-rose-400 mt-2.5"></p>
                 <div class="flex gap-2 mt-3">
-                    <button type="submit"
+                    <button type="submit" id="date-submit" disabled
                             class="flex-1 py-2.5 rounded-xl font-semibold text-sm bg-gradient-to-r from-violet-600 to-cyan-600
-                                   hover:from-violet-500 hover:to-cyan-500 active:scale-[0.99] transition">Add it</button>
+                                   hover:from-violet-500 hover:to-cyan-500 active:scale-[0.99] transition
+                                   disabled:opacity-40 disabled:hover:from-violet-600 disabled:hover:to-cyan-600
+                                   disabled:active:scale-100">Add it</button>
                     <button type="button" id="date-cancel"
                             class="px-4 py-2.5 rounded-xl text-sm bg-white/5 border border-white/10 hover:bg-white/10 transition">Cancel</button>
                 </div>
@@ -237,6 +245,7 @@
     <script src="js/quarter.js"></script>
     <script src="js/scoring.js"></script>
     <script src="js/store.js"></script>
+    <script src="js/calendar.js"></script>
     <script src="js/ics.js"></script>
     <script src="js/app.js"></script>
 </body>

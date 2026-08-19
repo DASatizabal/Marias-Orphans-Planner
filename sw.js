@@ -11,7 +11,7 @@
 // persistence and its own transport, and putting a service worker in front of
 // its long-lived streams breaks realtime updates.
 
-const CACHE_NAME = 'marias-orphans-v3';
+const CACHE_NAME = 'marias-orphans-v4';
 
 const ASSETS = [
     './',
@@ -21,6 +21,7 @@ const ASSETS = [
     './js/quarter.js',
     './js/scoring.js',
     './js/store.js',
+    './js/calendar.js',
     './js/ics.js',
     './js/app.js',
     './manifest.json',

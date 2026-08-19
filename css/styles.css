@@ -93,6 +93,94 @@ input:-webkit-autofill:active {
 .name-chip:hover  { background: rgba(255, 255, 255, 0.09); border-color: rgba(139, 92, 246, 0.5); }
 .name-chip:active { transform: scale(0.98); }
 
+/* ---- Multi-select date grid --------------------------------------------
+   Tap toggles a date, taps accumulate, and press-and-drag paints the
+   rectangle between two cells -- Wed Aug 5 down-right to Fri Aug 28 gives
+   every Wed/Thu/Fri in those four weeks. See the header of js/calendar.js. */
+.cal-nav {
+    width: 34px; height: 34px;
+    border-radius: 10px;
+    font-size: 1.15rem;
+    line-height: 1;
+    color: #cbd5e1;
+    background: rgba(255, 255, 255, 0.04);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    transition: background-color .15s ease, color .15s ease;
+}
+.cal-nav:hover:not(:disabled) { background: rgba(255, 255, 255, 0.09); }
+.cal-nav:disabled             { opacity: 0.3; cursor: default; }
+
+.cal-dow {
+    display: grid;
+    grid-template-columns: repeat(7, 1fr);
+    gap: 3px;
+    margin-bottom: 3px;
+    font-size: 0.6875rem;
+    font-weight: 600;
+    letter-spacing: 0.04em;
+    text-align: center;
+    color: #64748b;
+}
+
+.cal-grid {
+    display: grid;
+    grid-template-columns: repeat(7, 1fr);
+    gap: 3px;
+    /* touch-action must be none or a vertical drag scrolls the page instead of
+       selecting. The cost is that you cannot scroll by dragging ON the grid --
+       anywhere else on the page still scrolls. The user-select rules stop the
+       desktop text-selection ghost and the iOS long-press loupe. */
+    touch-action: none;
+    user-select: none;
+    -webkit-user-select: none;
+    -webkit-touch-callout: none;
+}
+
+.cal-blank { min-height: 44px; }
+
+.cal-day {
+    /* >=44px like .vote-btn: one-handed, on a phone, in a dark bar. */
+    min-height: 44px;
+    border-radius: 10px;
+    font-size: 0.875rem;
+    font-weight: 600;
+    color: #cbd5e1;
+    background: rgba(255, 255, 255, 0.03);
+    border: none;
+    cursor: pointer;
+    position: relative;
+    transition: background-color .12s ease, color .12s ease;
+}
+.cal-day:hover:not(:disabled):not(.is-selected) { background: rgba(255, 255, 255, 0.08); }
+.cal-day:focus-visible { outline: 2px solid rgba(139, 92, 246, 0.75); outline-offset: 1px; }
+
+/* Same treatment as .vote-btn.on-yes: tinted fill plus an inset ring. */
+.cal-day.is-selected {
+    background: rgba(139, 92, 246, 0.22);
+    color: #ddd6fe;
+    box-shadow: inset 0 0 0 1px rgba(139, 92, 246, 0.55);
+}
+
+.cal-day.is-today:not(.is-selected) { box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.16); }
+
+.cal-day.is-disabled {
+    color: #475569;
+    background: transparent;
+    cursor: default;
+}
+
+/* Already on the board at the time currently picked. Still selectable -- one
+   existing date must not veto a twelve-cell drag; submit filters it out. */
+.cal-day.has-proposal::after {
+    content: '';
+    position: absolute;
+    bottom: 5px; left: 50%;
+    transform: translateX(-50%);
+    width: 4px; height: 4px;
+    border-radius: 999px;
+    background: #22d3ee;
+}
+
 /* ---- Gate error shake ---- */
 @keyframes shake {
     10%, 90% { transform: translateX(-2px); }
