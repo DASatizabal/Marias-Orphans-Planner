@@ -1,0 +1,13 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(python -m http.server *)",
+      "Bash(node tests/logic.test.js)",
+      "Bash(node --check *)",
+      "Bash(tasklist *)",
+      "Bash(unzip -l *)",
+      "Bash(git config --global --add safe.directory '*')",
+      "mcp__claude-in-chrome__tabs_context_mcp"
+    ]
+  }
+}
