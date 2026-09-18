@@ -72,13 +72,62 @@ const Quarter = {
         return this.info(new Date(info.year, (info.quarter - 1) * 3, 0));
     },
 
+    /** Descriptor for the quarter after the given one. */
+    next(quarterId) {
+        const info = this.fromId(quarterId);
+        if (!info) return null;
+        // Day 1 of the month after this quarter's last month is the next
+        // quarter's first day. Month index 12 rolls the year over on its own.
+        return this.info(new Date(info.year, info.quarter * 3, 1));
+    },
+
+    /** First day of the quarter's last month: "2026-09-01" for Q3 2026. */
+    lastMonthStart(info) {
+        return this.fmtDate(new Date(info.year, (info.quarter - 1) * 3 + 2, 1));
+    },
+
     /**
-     * Bounds for the date input: [today or quarter start, quarter end].
+     * Whether the next-quarter lookahead is switched on. Reads CONFIG when it
+     * is present and defaults ON when it is not, so tests/logic.test.js can
+     * require this file straight off disk and still exercise the behaviour.
+     */
+    lookaheadEnabled() {
+        return (typeof CONFIG !== 'undefined' && CONFIG.LOOKAHEAD_FROM_LAST_MONTH !== undefined)
+            ? !!CONFIG.LOOKAHEAD_FROM_LAST_MONTH
+            : true;
+    },
+
+    /**
+     * Bounds for the date input: [today or quarter start, end of the window].
      * A quarter that has already ended returns proposable: false.
+     *
+     * THE LOOKAHEAD: from the first day of the quarter's last month onward, the
+     * window runs through the end of the FOLLOWING quarter. Sep 1 opens October,
+     * November and December to a Q3 group. The point is runway -- a date that
+     * falls through in the closing weeks of a quarter leaves almost nowhere to
+     * move it to, and nobody should have to wait for the rollover to pick a
+     * night that actually works.
+     *
+     * Note what this deliberately does NOT change. Proposals still live in the
+     * CURRENT quarter's document, and archiving is still driven by that
+     * quarter's own endDate (Store.archiveIfStale). So a next-quarter date that
+     * wins is frozen into this quarter's result at the rollover and the new
+     * quarter opens empty. See README > "The next-quarter lookahead".
      */
     proposalBounds(info, todayStr = this.today()) {
         const min = todayStr > info.startDate ? todayStr : info.startDate;
-        return { min, max: info.endDate, proposable: min <= info.endDate };
+        const ahead = this.lookaheadEnabled() && todayStr >= this.lastMonthStart(info)
+            ? this.next(info.quarterId)
+            : null;
+        const max = ahead ? ahead.endDate : info.endDate;
+        return {
+            min,
+            max,
+            proposable: min <= max,
+            lookahead: !!ahead,
+            // Which quarter the far edge belongs to, for the "ends ..." message.
+            maxLabel: ahead ? ahead.label : info.label
+        };
     },
 
     /**
@@ -100,7 +149,7 @@ const Quarter = {
             };
         }
         if (dateStr > bounds.max) {
-            return { ok: false, error: `${info.label} ends ${this.prettyDate(info.endDate)}.` };
+            return { ok: false, error: `${bounds.maxLabel} ends ${this.prettyDate(bounds.max)}.` };
         }
         return { ok: true };
     },

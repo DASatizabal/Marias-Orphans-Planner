@@ -18,7 +18,9 @@ archived so you keep a record of where you went.
 - **Passcode.** One shared passcode gates the page. It is a UX gate, not
   security — see [Security model](#security-model).
 - **Dates.** Anyone proposes nights on a calendar, at an evening time, inside
-  the current quarter from today forward. Tap a night to pick it, tap again to
+  the current quarter from today forward — and, once the quarter's last month
+  begins, through the end of the following quarter too (see
+  [The next-quarter lookahead](#the-next-quarter-lookahead)). Tap a night to pick it, tap again to
   drop it, and tap as many as you like. **Press and drag** to sweep a block:
   from Wed Aug 5 down-right to Fri Aug 28 picks every Wednesday, Thursday and
   Friday in those four weeks — twelve nights in one gesture, all added at once.
@@ -157,7 +159,31 @@ device. To force everyone back through it, change the `LS_GATE` key in
 
 All in the `CONFIG` object in `js/config.js`: the time slots offered, the event
 duration used for calendar export, how many voters before the winner is shown as
-confident, and the size caps.
+confident, the size caps, and `LOOKAHEAD_FROM_LAST_MONTH` below.
+
+### The next-quarter lookahead
+
+`CONFIG.LOOKAHEAD_FROM_LAST_MONTH` (on by default). From the **first day of the
+quarter's last month**, the date picker stops stopping at the quarter line: on
+Sep 1 a Q3 group can propose any night through Dec 31. The calendar's next-month
+arrow simply unlocks the extra months; nothing else about proposing or voting
+changes.
+
+It exists for runway. If a date falls through in the closing weeks of a quarter
+there is almost nowhere left to move it to, and waiting for the rollover to pick
+a night that works is a silly reason to skip a quarter.
+
+**Know the trade before relying on it.** Proposals still live in the *current*
+quarter's document, and archiving still fires on that quarter's own `endDate`.
+So if a next-quarter date wins:
+
+- the quarter archives on schedule, freezing that future date as its `result`
+- the new quarter's document opens empty
+- the group re-proposes the agreed night in the new quarter, which takes one tap
+
+In other words the lookahead settles *which night everyone can make*. It does
+not carry the poll across the rollover. Set the flag to `false` for a hard
+quarter boundary.
 
 ## Security model
 
@@ -219,6 +245,14 @@ timezones. Format with `Quarter.fmtDate()`, parse with `Quarter.parseDate()`.
 after a quarter ends archives the previous one and freezes its winner into
 `result`, so history cannot drift if the scoring code changes. It is idempotent;
 everyone else no-ops.
+
+**The lookahead does not touch archiving, on purpose.**
+`Quarter.proposalBounds()` may hand back a `max` in the next quarter, but
+`Store.archiveIfStale()` still compares against the quarter's own `endDate`.
+Widening one without the other is the tempting mistake: a poll that stays open
+past its own quarter needs the winner's date in the staleness check as well, and
+that is a larger change than it looks. Leave them decoupled unless you are doing
+that deliberately.
 
 ## Layout
 

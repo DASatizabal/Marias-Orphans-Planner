@@ -1,7 +1,7 @@
 // Configuration for Maria's Orphans Planner
 // Quarterly happy-hour date + venue voting for a fixed group of friends.
 
-const APP_VERSION = '1.1.0';
+const APP_VERSION = '1.2.0';
 
 // ---------------------------------------------------------------------------
 // THE ROSTER
@@ -89,6 +89,22 @@ const CONFIG = {
     // Below this many voters on the leading proposal, the winner is shown as
     // tentative ("Early days") rather than as a decision.
     MIN_VOTERS_FOR_CONFIDENCE: 3,
+
+    // NEXT-QUARTER LOOKAHEAD.
+    // With this on, the date picker stops stopping at the quarter line once the
+    // quarter's last month begins: from Sep 1 a Q3 group can propose any night
+    // through Dec 31. It exists for the case where a date falls through late in
+    // a quarter and there is no room left to move it.
+    //
+    // Know the trade before flipping it. The proposals still belong to the
+    // CURRENT quarter's document, and archiving still fires on that quarter's
+    // own endDate, so a next-quarter date that wins is frozen into this
+    // quarter's result at the rollover and the new quarter opens empty. The
+    // group re-proposes the agreed night in the new quarter. See
+    // README.md > "The next-quarter lookahead".
+    //
+    // Set to false to go back to a hard quarter boundary.
+    LOOKAHEAD_FROM_LAST_MONTH: true,
 
     // Time options offered when proposing a date, in 24h HH:MM.
     TIME_SLOTS: ['16:00', '16:30', '17:00', '17:30', '18:00', '18:30', '19:00', '19:30', '20:00'],

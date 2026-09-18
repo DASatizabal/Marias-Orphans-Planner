@@ -28,11 +28,42 @@ eq(Q.prettyDate('2026-09-30').slice(0,3),'Wed','Sep 30 2026 is a Wednesday');
 
 // --- proposal bounds ---
 const b = Q.proposalBounds(i,'2026-08-17');
-eq(b,{min:'2026-08-17',max:'2026-09-30',proposable:true},'bounds clamp to today');
+eq(b,{min:'2026-08-17',max:'2026-09-30',proposable:true,lookahead:false,maxLabel:'Q3 2026'},
+   'bounds clamp to today');
 eq(Q.validateDate('2026-08-01',i,'2026-08-17').ok,false,'past date rejected');
 eq(Q.validateDate('2026-10-05',i,'2026-08-17').ok,false,'next-quarter date rejected');
 eq(Q.validateDate('2026-09-30',i,'2026-08-17').ok,true,'last day of quarter accepted');
 eq(Q.validateDate('2026-08-17',i,'2026-08-17').ok,true,'today accepted');
+
+// --- next-quarter lookahead ---
+// CONFIG is absent under node, so Quarter.lookaheadEnabled() defaults on here.
+eq(Q.next('2026-Q3').quarterId,'2026-Q4','next within year');
+eq(Q.next('2026-Q4').quarterId,'2027-Q1','next crosses year boundary');
+eq(Q.next('garbage'),null,'next rejects garbage');
+eq(Q.lastMonthStart(i),'2026-09-01','last month of Q3 starts Sep 1');
+eq(Q.lastMonthStart(Q.fromId('2026-Q1')),'2026-03-01','last month of Q1 starts Mar 1');
+
+// before the last month: window still stops at the quarter line
+eq(Q.proposalBounds(i,'2026-08-31').max,'2026-09-30','Aug 31: no lookahead yet');
+eq(Q.proposalBounds(i,'2026-08-31').lookahead,false,'Aug 31: lookahead closed');
+
+// the day it opens, and after
+const la = Q.proposalBounds(i,'2026-09-01');
+eq(la,{min:'2026-09-01',max:'2026-12-31',proposable:true,lookahead:true,maxLabel:'Q4 2026'},
+   'Sep 1 opens the whole of Q4');
+eq(Q.proposalBounds(i,'2026-09-18').max,'2026-12-31','mid-September still sees Q4');
+
+// what that means for validation
+eq(Q.validateDate('2026-10-05',i,'2026-09-18').ok,true,'next-quarter date accepted in lookahead');
+eq(Q.validateDate('2026-12-31',i,'2026-09-18').ok,true,'last day of next quarter accepted');
+eq(Q.validateDate('2027-01-01',i,'2026-09-18').ok,false,'two quarters out still rejected');
+eq(Q.validateDate('2027-01-01',i,'2026-09-18').error,'Q4 2026 ends Thu, Dec 31.',
+   'error names the far quarter');
+eq(Q.validateDate('2026-09-17',i,'2026-09-18').ok,false,'past date still rejected in lookahead');
+
+// Q4 looks into next year
+const q4 = Q.fromId('2026-Q4');
+eq(Q.proposalBounds(q4,'2026-12-01').max,'2027-03-31','December opens Q1 of next year');
 
 // --- scoring ---
 const props = {
