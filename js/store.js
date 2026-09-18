@@ -284,18 +284,90 @@ const Store = {
     },
 
     /**
-     * Close out a quarter that has ended, freezing its winner into `result` so
-     * history cannot drift as the scoring code evolves.
+     * Copy an in-flight poll into the next quarter's document.
      *
-     * Idempotent: whoever opens the app first after the quarter ends does this,
-     * everyone else no-ops. No cron, no Cloud Function, no organizer action.
+     * THE IDS ARE REUSED ON PURPOSE. A carried proposal keeps the id it had in
+     * the old quarter, which is what makes running this twice harmless: the
+     * second write addresses the same field with the same value. Two friends
+     * opening the app in the same second at the rollover both do the carry and
+     * the result is identical either way.
+     *
+     * Anything already present in the target is skipped rather than
+     * overwritten. Without that, a retry after a half-failed carry would post
+     * the OLD vote map back over a vote someone had since cast in the new
+     * quarter -- the silent kind of wrong this file exists to avoid.
+     */
+    async _carryPoll(nextInfo, proposals, venues) {
+        await this.ensureQuarter(nextInfo, 'auto');
+
+        const existing = await this.getQuarter(nextInfo.quarterId) || {};
+        const haveDates = existing.dateProposals || {};
+        const haveVenues = existing.venues || {};
+
+        const args = [];
+        Object.keys(proposals).forEach(id => {
+            if (id in haveDates) return;
+            args.push(new firebase.firestore.FieldPath('dateProposals', id), proposals[id]);
+        });
+        Object.keys(venues || {}).forEach(id => {
+            if (id in haveVenues) return;
+            args.push(new firebase.firestore.FieldPath('venues', id), venues[id]);
+        });
+        if (!args.length) return 0;
+
+        args.push(new firebase.firestore.FieldPath('updatedAt'), this._touch());
+        await this._doc(nextInfo.quarterId).update(...args);
+        return args.length;
+    },
+
+    /**
+     * Close out a quarter that has ended: freeze what happened in it, and roll
+     * anything still live into the new quarter.
+     *
+     * Whoever opens the app first after a quarter ends does this. No cron, no
+     * Cloud Function, no organizer action.
+     *
+     * The poll splits at the quarter's own closing date:
+     *
+     *   nights inside it  -> stay, and the winner among them is frozen into
+     *                        `result` so history cannot drift as the scoring
+     *                        code evolves
+     *   nights past it    -> MOVE to the new quarter, votes intact, keeping
+     *                        their ids. Nobody re-votes on a night the group
+     *                        already agreed on.
+     *
+     * Venues are COPIED rather than moved, and only when there are dates to
+     * carry. A venue is not pinned to a quarter the way a night is, so
+     * duplicating the list costs nothing, while moving it would strip the
+     * archived quarter's board of the very place the group went. A quarter that
+     * ended with nothing outstanding still hands the next one a clean slate.
+     *
+     * ORDER MATTERS. The carry runs BEFORE the archive flip, because the carry
+     * is idempotent and the flip is the latch that stops the whole thing
+     * re-running. Flipping first and then failing the carry would strand the
+     * poll in a quarter nobody can write to any more.
      */
     async archiveIfStale(quarterId, todayStr, roster) {
         const data = await this.getQuarter(quarterId);
         if (!data || data.status !== 'active') return null;
         if (!(data.endDate < todayStr)) return null;
 
-        const ranked = Scoring.rankProposals(data.dateProposals, roster);
+        const carryOn = typeof CONFIG === 'undefined' || CONFIG.CARRY_POLL_ON_ROLLOVER !== false;
+        const split = carryOn
+            ? Quarter.splitAtQuarterEnd(data.dateProposals, data.endDate)
+            : { kept: data.dateProposals || {}, carried: {} };
+        const carriedIds = Object.keys(split.carried);
+
+        const nextInfo = carriedIds.length ? Quarter.next(quarterId) : null;
+        if (nextInfo) {
+            await this._carryPoll(nextInfo, split.carried, data.venues || {});
+        }
+
+        // The frozen result describes THIS quarter, so it is ranked over the
+        // nights that fell inside it. A carried night winning the board does
+        // not make it this quarter's outing -- it is the next one's, and
+        // freezing it here would post the same happy hour to history twice.
+        const ranked = Scoring.rankProposals(split.kept, roster);
         const venues = Scoring.rankVenues(data.venues, roster);
         const win = ranked[0] || null;
         const venue = venues[0] || null;
@@ -312,12 +384,20 @@ const Store = {
             frozenAt: new Date().toISOString()
         } : null;
 
-        await this._doc(quarterId).update(
+        const args = [
             new firebase.firestore.FieldPath('status'), 'archived',
             new firebase.firestore.FieldPath('result'), result,
             new firebase.firestore.FieldPath('archivedAt'), this._touch(),
             new firebase.firestore.FieldPath('updatedAt'), this._touch()
-        );
+        ];
+        // The carried nights leave this quarter's board. They live in the new
+        // one now, and listing them under both is how History starts lying.
+        carriedIds.forEach(id => {
+            args.push(new firebase.firestore.FieldPath('dateProposals', id),
+                      firebase.firestore.FieldValue.delete());
+        });
+
+        await this._doc(quarterId).update(...args);
         return result;
     },
 

@@ -108,11 +108,10 @@ const Quarter = {
      * move it to, and nobody should have to wait for the rollover to pick a
      * night that actually works.
      *
-     * Note what this deliberately does NOT change. Proposals still live in the
-     * CURRENT quarter's document, and archiving is still driven by that
-     * quarter's own endDate (Store.archiveIfStale). So a next-quarter date that
-     * wins is frozen into this quarter's result at the rollover and the new
-     * quarter opens empty. See README > "The next-quarter lookahead".
+     * A date proposed past the quarter line does not get stranded there. At the
+     * rollover the poll splits at this quarter's endDate and the far half moves
+     * into the new quarter with its votes -- see splitAtQuarterEnd() below and
+     * Store.archiveIfStale(). Nobody re-votes.
      */
     proposalBounds(info, todayStr = this.today()) {
         const min = todayStr > info.startDate ? todayStr : info.startDate;
@@ -152,6 +151,30 @@ const Quarter = {
             return { ok: false, error: `${bounds.maxLabel} ends ${this.prettyDate(bounds.max)}.` };
         }
         return { ok: true };
+    },
+
+    /**
+     * Split a quarter's date proposals at its own closing date.
+     *
+     *   kept    -- nights that fell inside the quarter. These are its history,
+     *              and the winner among them becomes its frozen `result`.
+     *   carried -- nights beyond it, put up through the lookahead. These move
+     *              into the next quarter at the rollover, votes and all.
+     *
+     * The test is the date alone, never "is it still in the future". A night
+     * that has already been and gone still belongs to the quarter it fell in,
+     * and if nobody opens the app until November the October plans must still
+     * land in Q4 rather than evaporate between the two.
+     */
+    splitAtQuarterEnd(proposals, endDate) {
+        const kept = {};
+        const carried = {};
+        Object.keys(proposals || {}).forEach(id => {
+            const p = proposals[id];
+            if (p && p.date > endDate) carried[id] = p;
+            else kept[id] = p;
+        });
+        return { kept, carried };
     },
 
     /** "Fri, Sep 12" */

@@ -65,6 +65,45 @@ eq(Q.validateDate('2026-09-17',i,'2026-09-18').ok,false,'past date still rejecte
 const q4 = Q.fromId('2026-Q4');
 eq(Q.proposalBounds(q4,'2026-12-01').max,'2027-03-31','December opens Q1 of next year');
 
+// --- rollover split ---
+// What archiveIfStale() leans on: the board splits at the quarter's own
+// closing date, and the frozen result is ranked over the kept half only.
+const board = {
+  sep:{date:'2026-09-25',time:'18:00',votes:{David:'yes',Maria:'yes'}},
+  oct:{date:'2026-10-23',time:'18:00',votes:{David:'yes',Maria:'yes',Luz:'yes',Laura:'yes'}},
+  nov:{date:'2026-11-06',time:'18:00',votes:{David:'yes'}}
+};
+const sp = Q.splitAtQuarterEnd(board,'2026-09-30');
+eq(Object.keys(sp.kept),['sep'],'nights inside the quarter are kept');
+eq(Object.keys(sp.carried).sort(),['nov','oct'],'nights past it are carried');
+eq(sp.carried.oct.votes,{David:'yes',Maria:'yes',Luz:'yes',Laura:'yes'},'carried votes travel intact');
+
+// the whole point: Oct 23 outscores Sep 25, but it is not Q3's outing
+eq(S.rankProposals(board,R)[0].id,'oct','Oct 23 leads the combined board');
+eq(S.rankProposals(sp.kept,R)[0].id,'sep',"Q3's frozen result ignores carried nights");
+
+// a quarter that ended with nothing outstanding carries nothing
+const tidy = { a:{date:'2026-09-25',votes:{David:'yes'}} };
+eq(Q.splitAtQuarterEnd(tidy,'2026-09-30').carried,{},'nothing to carry when all nights fell inside');
+eq(Object.keys(Q.splitAtQuarterEnd(tidy,'2026-09-30').kept),['a'],'tidy quarter keeps its own night');
+
+// nothing fell inside: the quarter freezes empty and the whole board moves on
+const allAhead = { a:{date:'2026-10-23',votes:{David:'yes'}} };
+const sp2 = Q.splitAtQuarterEnd(allAhead,'2026-09-30');
+eq(sp2.kept,{},'no in-quarter nights left behind');
+eq(S.rankProposals(sp2.kept,R)[0],undefined,'empty kept half freezes a null result');
+
+// a carried night that has already been and gone still moves, rather than
+// vanishing between the two quarters when nobody opens the app for a month
+eq(Object.keys(Q.splitAtQuarterEnd({p:{date:'2026-10-23',votes:{}}},'2026-09-30').carried),
+   ['p'],'a past carried night still moves');
+eq(Q.splitAtQuarterEnd({},'2026-09-30'),{kept:{},carried:{}},'empty board splits cleanly');
+eq(Q.splitAtQuarterEnd(null,'2026-09-30'),{kept:{},carried:{}},'missing board splits cleanly');
+
+// the boundary itself: the last night of the quarter stays
+eq(Object.keys(Q.splitAtQuarterEnd({e:{date:'2026-09-30',votes:{}}},'2026-09-30').kept),
+   ['e'],'the quarter\'s last day is inside it');
+
 // --- scoring ---
 const props = {
   a:{date:'2026-09-12',time:'18:30',createdAt:'2026-08-17T14:00:00Z',

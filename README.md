@@ -28,6 +28,10 @@ archived so you keep a record of where you went.
   time — tap the value you already picked to clear it.
 - **Venues.** Anyone suggests a place with an optional note and link. Everyone
   upvotes. Suggesting counts as an upvote.
+- **Nothing is lost at the quarter line.** When a quarter ends it is frozen into
+  History, and any night the group has already agreed on for the next quarter
+  moves across with its votes intact — see
+  [Rollover](#rollover-what-carries-and-what-freezes).
 - **The winner is automatic.** Yes = 2 points, Maybe = 1, No = 0. Highest score
   wins. No organizer step, no "lock it in" button.
 - **Live.** Everything is one Firestore listener, so a vote cast on one phone
@@ -173,17 +177,38 @@ It exists for runway. If a date falls through in the closing weeks of a quarter
 there is almost nowhere left to move it to, and waiting for the rollover to pick
 a night that works is a silly reason to skip a quarter.
 
-**Know the trade before relying on it.** Proposals still live in the *current*
-quarter's document, and archiving still fires on that quarter's own `endDate`.
-So if a next-quarter date wins:
+A night put up this way is not stranded on the wrong side of the quarter line.
+At the rollover it moves into the new quarter with its votes, which is the next
+section. Set the flag to `false` for a hard quarter boundary.
 
-- the quarter archives on schedule, freezing that future date as its `result`
-- the new quarter's document opens empty
-- the group re-proposes the agreed night in the new quarter, which takes one tap
+### Rollover: what carries and what freezes
 
-In other words the lookahead settles *which night everyone can make*. It does
-not carry the poll across the rollover. Set the flag to `false` for a hard
-quarter boundary.
+`CONFIG.CARRY_POLL_ON_ROLLOVER` (on by default). When a quarter ends, its board
+splits at its own closing date:
+
+| | Where it ends up |
+|---|---|
+| Nights **inside** the quarter | Stay. The winner among them is frozen into that quarter's `result` and it becomes history. |
+| Nights **past** the quarter | **Move** into the new quarter, votes and all, keeping their ids. |
+| Venues | **Copied** into the new quarter, and only when there are dates to carry. |
+
+So a group that settled on Oct 23 back in September opens October to a board
+that already says Oct 23, with the same five votes on it. Nobody re-votes.
+
+Three details worth knowing:
+
+- **The frozen result is ranked over the kept half only.** If Oct 23 outscored
+  every September night, it still is not Q3's outing — it is Q4's. Freezing it
+  in both is how the same happy hour ends up in History twice.
+- **A quarter that ended with nothing outstanding carries nothing**, and the new
+  quarter opens empty exactly as it always did. The new quarter's document is
+  not even created early unless there is something to put in it.
+- **Venues are copied, not moved.** A venue is not pinned to a quarter the way a
+  night is, so duplicating the list costs nothing, while moving it would strip
+  the archived quarter's board of the very place the group went.
+
+Set the flag to `false` and a quarter ends the old way: everything freezes where
+it sits and the new quarter opens empty.
 
 ## Security model
 
@@ -246,13 +271,18 @@ after a quarter ends archives the previous one and freezes its winner into
 `result`, so history cannot drift if the scoring code changes. It is idempotent;
 everyone else no-ops.
 
-**The lookahead does not touch archiving, on purpose.**
-`Quarter.proposalBounds()` may hand back a `max` in the next quarter, but
-`Store.archiveIfStale()` still compares against the quarter's own `endDate`.
-Widening one without the other is the tempting mistake: a poll that stays open
-past its own quarter needs the winner's date in the staleness check as well, and
-that is a larger change than it looks. Leave them decoupled unless you are doing
-that deliberately.
+**The rollover carry reuses proposal ids on purpose.** `Store.archiveIfStale()`
+writes a carried night into the new quarter under the id it already had, which
+is what makes running the carry twice harmless — two friends opening the app in
+the same second at the rollover both do it and the result is identical. It also
+skips anything already present in the target rather than overwriting it, so a
+retry after a half-failed carry cannot post an old vote map back over a vote
+someone has since cast. Generating fresh ids would quietly break both.
+
+**The carry runs before the archive flip, and the order is load-bearing.** The
+carry is idempotent; the flip to `status: 'archived'` is the latch that stops the
+whole thing re-running. Flip first and then fail the carry, and the poll is
+stranded in a quarter nobody can write to any more.
 
 ## Layout
 

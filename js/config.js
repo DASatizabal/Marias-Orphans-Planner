@@ -1,7 +1,7 @@
 // Configuration for Maria's Orphans Planner
 // Quarterly happy-hour date + venue voting for a fixed group of friends.
 
-const APP_VERSION = '1.2.0';
+const APP_VERSION = '1.3.0';
 
 // ---------------------------------------------------------------------------
 // THE ROSTER
@@ -96,15 +96,28 @@ const CONFIG = {
     // through Dec 31. It exists for the case where a date falls through late in
     // a quarter and there is no room left to move it.
     //
-    // Know the trade before flipping it. The proposals still belong to the
-    // CURRENT quarter's document, and archiving still fires on that quarter's
-    // own endDate, so a next-quarter date that wins is frozen into this
-    // quarter's result at the rollover and the new quarter opens empty. The
-    // group re-proposes the agreed night in the new quarter. See
-    // README.md > "The next-quarter lookahead".
+    // A night put up this way is not stranded on the wrong side of the quarter
+    // line: at the rollover it moves into the new quarter with its votes, by
+    // CARRY_POLL_ON_ROLLOVER below.
     //
     // Set to false to go back to a hard quarter boundary.
     LOOKAHEAD_FROM_LAST_MONTH: true,
+
+    // CARRY THE POLL ACROSS THE ROLLOVER.
+    // When a quarter ends, its board splits at its own closing date. Nights
+    // that fell inside it stay put and the winner among them is frozen into
+    // that quarter's history. Nights beyond it move into the new quarter with
+    // every vote intact, so a group that settled on Oct 23 back in September
+    // opens October to a board that already says Oct 23. Nobody re-votes.
+    //
+    // Venues come along too, copied rather than moved, and only when there are
+    // dates to carry. A quarter that ended with nothing outstanding still hands
+    // the next one a clean slate.
+    //
+    // Set to false and a quarter ends the old way: everything is frozen where
+    // it sits and the new quarter opens empty.
+    // See README.md > "Rollover: what carries and what freezes".
+    CARRY_POLL_ON_ROLLOVER: true,
 
     // Time options offered when proposing a date, in 24h HH:MM.
     TIME_SLOTS: ['16:00', '16:30', '17:00', '17:30', '18:00', '18:30', '19:00', '19:30', '20:00'],

@@ -11,7 +11,7 @@
 // persistence and its own transport, and putting a service worker in front of
 // its long-lived streams breaks realtime updates.
 
-const CACHE_NAME = 'marias-orphans-v5';
+const CACHE_NAME = 'marias-orphans-v6';
 
 const ASSETS = [
     './',
