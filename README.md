@@ -32,6 +32,9 @@ archived so you keep a record of where you went.
   History, and any night the group has already agreed on for the next quarter
   moves across with its votes intact — see
   [Rollover](#rollover-what-carries-and-what-freezes).
+- **Spent nights clear themselves.** A night whose date has gone stops being an
+  option, so it comes off the board a few days later — all except the
+  best-scoring one, which stays as the record of where everyone went.
 - **The winner is automatic.** Yes = 2 points, Maybe = 1, No = 0. Highest score
   wins. No organizer step, no "lock it in" button.
 - **Live.** Everything is one Firestore listener, so a vote cast on one phone
@@ -181,6 +184,31 @@ A night put up this way is not stranded on the wrong side of the quarter line.
 At the rollover it moves into the new quarter with its votes, which is the next
 section. Set the flag to `false` for a hard quarter boundary.
 
+### Sweeping spent nights
+
+`CONFIG.SWEEP_PAST_DUE` (on by default) and `CONFIG.SWEEP_GRACE_DAYS` (3). A
+night whose date has passed is no longer something anyone can say yes to, and a
+pile of them buries the nights that are still live. Whoever opens the app clears
+them, the same way the rollover happens — no cron, no organizer step.
+
+Two rules keep it from eating something that matters:
+
+- **One past night always survives** — the best-scoring one. That is the night
+  the group actually went out, and it is what `archiveIfStale()` freezes into
+  the quarter's history. A board with only one past night on it is never swept
+  at all.
+- **The survivor is ranked among past nights only**, never against the whole
+  board. Rank it against everything and a next-quarter date pulling five yeses —
+  which the lookahead makes ordinary in a quarter's last month — would make
+  every night the group ever met "non-winning" and sweep the lot.
+
+`SWEEP_GRACE_DAYS` is how long a spent night lingers before it goes, so somebody
+who has not opened the app in a couple of days can still see how the vote landed.
+Set it to `0` to sweep from the next day, or set `SWEEP_PAST_DUE: false` to keep
+every night on the board forever.
+
+Archived quarters are never swept. Their boards are the history.
+
 ### Rollover: what carries and what freezes
 
 `CONFIG.CARRY_POLL_ON_ROLLOVER` (on by default). When a quarter ends, its board
@@ -288,6 +316,12 @@ timezones. Format with `Quarter.fmtDate()`, parse with `Quarter.parseDate()`.
 after a quarter ends archives the previous one and freezes its winner into
 `result`, so history cannot drift if the scoring code changes. It is idempotent;
 everyone else no-ops.
+
+**The sweep writes only when it has something to delete.** `Store.sweepPastDue()`
+runs on every app open, and an unconditional `update()` there would push a
+pointless snapshot to all six phones every time anybody loads the page. It also
+never runs on a `?q=` history view: opening a past quarter to look at it must not
+quietly rewrite it.
 
 **The rollover carry reuses proposal ids on purpose.** `Store.archiveIfStale()`
 writes a carried night into the new quarter under the id it already had, which

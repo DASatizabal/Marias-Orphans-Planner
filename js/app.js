@@ -158,6 +158,9 @@ const App = {
         // Close out the previous quarter if it ran out while nobody was looking.
         this.closeOutPreviousQuarter();
 
+        // And clear nights that have already been and gone off this one.
+        this.sweepPastDue();
+
         // A tab left open across Sep 30 -> Oct 1 would otherwise keep voting on
         // a quarter that has ended.
         document.addEventListener('visibilitychange', () => {
@@ -173,6 +176,20 @@ const App = {
             await Store.archiveIfStale(prev.quarterId, Quarter.today(), ROSTER);
         } catch (err) {
             console.warn('archiveIfStale:', err.code || err.message);
+        }
+    },
+
+    /**
+     * Never on a history view. Opening a past quarter to look at it must not
+     * quietly rewrite it, and ?q= is how History opens one.
+     */
+    async sweepPastDue() {
+        if (this.state.override) return;
+        try {
+            const n = await Store.sweepPastDue(this.state.quarterId, Quarter.today(), ROSTER);
+            if (n) console.info(`Swept ${n} past night${n === 1 ? '' : 's'} off the board.`);
+        } catch (err) {
+            console.warn('sweepPastDue:', err.code || err.message);
         }
     },
 

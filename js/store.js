@@ -284,6 +284,41 @@ const Store = {
     },
 
     /**
+     * Clear nights that have been and gone off the live board.
+     *
+     * Runs on whoever opens the app, like the rollover. Idempotent by nature:
+     * a delete addressed at a field that is already gone is a no-op, so two
+     * friends sweeping in the same second cost one redundant write and nothing
+     * else. Writes only when there is something to remove -- an unconditional
+     * update() here would push a pointless snapshot to all six phones on every
+     * single app open.
+     *
+     * Archived quarters are never touched. Their boards are the history.
+     */
+    async sweepPastDue(quarterId, todayStr, roster) {
+        if (typeof CONFIG !== 'undefined' && CONFIG.SWEEP_PAST_DUE === false) return 0;
+
+        const data = await this.getQuarter(quarterId);
+        if (!data || data.status !== 'active') return 0;
+
+        const grace = (typeof CONFIG !== 'undefined' && Number.isFinite(CONFIG.SWEEP_GRACE_DAYS))
+            ? CONFIG.SWEEP_GRACE_DAYS
+            : 3;
+        const ids = Scoring.sweepable(
+            data.dateProposals, todayStr, Quarter.minusDays(todayStr, grace), roster);
+        if (!ids.length) return 0;
+
+        const args = [];
+        ids.forEach(id => {
+            args.push(new firebase.firestore.FieldPath('dateProposals', id),
+                      firebase.firestore.FieldValue.delete());
+        });
+        args.push(new firebase.firestore.FieldPath('updatedAt'), this._touch());
+        await this._doc(quarterId).update(...args);
+        return ids.length;
+    },
+
+    /**
      * Copy an in-flight poll into the next quarter's document.
      *
      * THE IDS ARE REUSED ON PURPOSE. A carried proposal keeps the id it had in

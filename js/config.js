@@ -1,7 +1,7 @@
 // Configuration for Maria's Orphans Planner
 // Quarterly happy-hour date + venue voting for a fixed group of friends.
 
-const APP_VERSION = '1.3.1';
+const APP_VERSION = '1.4.0';
 
 // ---------------------------------------------------------------------------
 // THE ROSTER
@@ -131,6 +131,22 @@ const CONFIG = {
     MAX_VENUES: 40,
     MAX_VENUE_NAME: 80,
     MAX_VENUE_NOTE: 200,
+
+    // SWEEPING PAST NIGHTS.
+    // A night whose date has gone is not an option any more, and a pile of them
+    // buries the ones people can still take. Whoever opens the app clears them.
+    //
+    // Exactly one past night always survives: the best-scoring one, which is
+    // the night the group actually went out and the one archiveIfStale()
+    // freezes into history. The survivor is ranked among PAST nights only --
+    // rank it against the whole board and a next-quarter date pulling five
+    // yeses would sweep every night the group ever met.
+    //
+    // SWEEP_GRACE_DAYS is how long a spent night lingers first, so somebody who
+    // has not opened the app in a couple of days can still see how the vote
+    // landed before it goes. 0 sweeps from the next day.
+    SWEEP_PAST_DUE: true,
+    SWEEP_GRACE_DAYS: 3,
 
     // How many past quarters the History view lists.
     //

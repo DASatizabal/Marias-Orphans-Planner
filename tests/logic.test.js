@@ -65,6 +65,53 @@ eq(Q.validateDate('2026-09-17',i,'2026-09-18').ok,false,'past date still rejecte
 const q4 = Q.fromId('2026-Q4');
 eq(Q.proposalBounds(q4,'2026-12-01').max,'2027-03-31','December opens Q1 of next year');
 
+// --- minusDays ---
+eq(Q.minusDays('2026-10-02',3),'2026-09-29','minusDays walks into the previous month');
+eq(Q.minusDays('2026-01-02',5),'2025-12-28','minusDays walks into the previous year');
+eq(Q.minusDays('2026-10-02',0),'2026-10-02','minusDays 0 is a no-op');
+eq(Q.minusDays('2026-03-09',2),'2026-03-07','minusDays across the US DST jump');
+
+// --- sweeping past nights ---
+// grace of 3: cutoff is today - 3, and a night on or before it is old enough.
+const sweepBoard = {
+  gone :{date:'2026-09-20',time:'18:00',createdAt:'a',votes:{David:'yes'}},                 // lost, well past
+  went :{date:'2026-09-25',time:'18:00',createdAt:'b',votes:{David:'yes',Maria:'yes',Luz:'yes'}}, // the night they met
+  fresh:{date:'2026-09-30',time:'18:00',createdAt:'c',votes:{Laura:'yes'}},                 // past but inside grace
+  ahead:{date:'2026-10-23',time:'18:00',createdAt:'d',votes:{David:'yes',Maria:'yes',Luz:'yes',Laura:'yes'}}
+};
+const cut = Q.minusDays('2026-10-02',3);   // 2026-09-29
+eq(cut,'2026-09-29','cutoff is today minus the grace');
+eq(S.sweepable(sweepBoard,'2026-10-02',cut,R),['gone'],'only the spent loser goes');
+
+// the whole point: 'ahead' outscores 'went', and must not make it sweepable
+eq(S.rankProposals(sweepBoard,R)[0].id,'ahead','a next-quarter night can lead the board');
+eq(S.sweepable(sweepBoard,'2026-10-02',cut,R).includes('went'),false,
+   'the night they met survives a higher-scoring future night');
+
+// once the grace has run out on 'fresh' it goes too, and 'went' still stays
+eq(S.sweepable(sweepBoard,'2026-10-06',Q.minusDays('2026-10-06',3),R),['fresh','gone'],
+   'grace expiring sweeps the rest, never the record');
+
+// a lone past night is the record, not clutter
+eq(S.sweepable({only:{date:'2026-09-01',votes:{}}},'2026-10-02','2026-09-29',R),[],
+   'a single past night is never swept');
+eq(S.sweepable({},'2026-10-02','2026-09-29',R),[],'empty board sweeps nothing');
+eq(S.sweepable(null,'2026-10-02','2026-09-29',R),[],'missing board sweeps nothing');
+
+// nothing in the past at all
+eq(S.sweepable({a:{date:'2026-10-23',votes:{}},b:{date:'2026-11-06',votes:{}}},
+               '2026-10-02','2026-09-29',R),[],'future-only board sweeps nothing');
+
+// tonight is not past due, and neither is a night still inside the grace
+eq(S.sweepable({a:{date:'2026-10-02',votes:{}},b:{date:'2026-10-01',votes:{}},
+                c:{date:'2026-09-10',votes:{}}},'2026-10-02','2026-09-29',R),[],
+   "tonight and yesterday are safe, and the one old night left is the record");
+
+// a tie among spent nights still leaves exactly one behind
+const tied = { x:{date:'2026-09-10',createdAt:'a',votes:{David:'yes'}},
+               y:{date:'2026-09-11',createdAt:'b',votes:{Maria:'yes'}} };
+eq(S.sweepable(tied,'2026-10-02','2026-09-29',R).length,1,'a tie still keeps one record');
+
 // --- rollover split ---
 // What archiveIfStale() leans on: the board splits at the quarter's own
 // closing date, and the frozen result is ranked over the kept half only.

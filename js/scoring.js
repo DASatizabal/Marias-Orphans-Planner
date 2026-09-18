@@ -86,6 +86,42 @@ const Scoring = (() => {
             );
     }
 
+    /**
+     * Which past nights are dead weight, and which one has to stay.
+     *
+     * A night whose date has gone is no longer an option, and leaving a pile of
+     * them on the board buries the ones people can still take. But exactly one
+     * past night is not clutter: the best-scoring one is the night the group
+     * actually went out, and it is what Store.archiveIfStale() freezes into the
+     * quarter's history. Sweep that and the quarter ends up with no record that
+     * anything happened.
+     *
+     * So the survivor is ranked among the PAST nights only, never against the
+     * whole board. Otherwise a next-quarter date pulling five yeses -- which
+     * the lookahead makes ordinary in the last month of a quarter -- would make
+     * every night the group ever met "non-winning" and sweep the lot.
+     *
+     * `cutoff` is how far back a night must be before it is old enough to go,
+     * passed in rather than computed here so this file stays free of CONFIG and
+     * of Quarter (tests require the two straight off disk, in separate scopes).
+     */
+    function sweepable(proposals, todayStr, cutoffStr, roster) {
+        const pastDue = {};
+        Object.keys(proposals || {}).forEach(id => {
+            const p = proposals[id];
+            if (p && p.date < todayStr) pastDue[id] = p;
+        });
+
+        const ids = Object.keys(pastDue);
+        // One past night is the record, not clutter. Nothing to do.
+        if (ids.length < 2) return [];
+
+        const keep = rankProposals(pastDue, roster)[0];
+        return ids
+            .filter(id => id !== keep.id && pastDue[id].date <= cutoffStr)
+            .sort();
+    }
+
     /** Roster members who have not voted on a single proposal all quarter. */
     function waitingOn(proposals, roster) {
         const seen = new Set();
@@ -140,7 +176,7 @@ const Scoring = (() => {
         };
     }
 
-    return { tally, rankProposals, rankVenues, waitingOn, confidence, WEIGHTS };
+    return { tally, rankProposals, rankVenues, sweepable, waitingOn, confidence, WEIGHTS };
 })();
 
 if (typeof module !== 'undefined' && module.exports) module.exports = Scoring;

@@ -199,6 +199,18 @@ const Quarter = {
         return d.toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' });
     },
 
+    /**
+     * dateStr shifted back n days, as a YYYY-MM-DD string.
+     *
+     * Arithmetic on the day NUMBER, per the timezone rule at the top of this
+     * file. Date handles a day that goes to zero or negative by walking into
+     * the previous month, and the previous year past that.
+     */
+    minusDays(dateStr, n) {
+        const [y, m, d] = String(dateStr).split('-').map(Number);
+        return this.fmtDate(new Date(y, m - 1, d - n));
+    },
+
     /** Whole days from today until dateStr. Negative if past. */
     daysUntil(dateStr, todayStr = this.today()) {
         const ms = this.parseDate(dateStr) - this.parseDate(todayStr);
