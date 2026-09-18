@@ -101,11 +101,23 @@ const Scoring = (() => {
      * the lookahead makes ordinary in the last month of a quarter -- would make
      * every night the group ever met "non-winning" and sweep the lot.
      *
+     * BEING THE BEST PAST NIGHT IS NOT ENOUGH TO SURVIVE. The best of a bad lot
+     * is still a bad lot: a night one person proposed and nobody else answered
+     * is a dead suggestion, not a record of an evening, and protecting it gives
+     * it permanent tenure on the board -- it can only ever be displaced by
+     * another past night, which is exactly the clutter the sweep exists to
+     * remove. So the survivor must also clear `keepMinVoters`. Below that bar
+     * nothing is protected and every spent night goes.
+     *
      * `cutoff` is how far back a night must be before it is old enough to go,
-     * passed in rather than computed here so this file stays free of CONFIG and
-     * of Quarter (tests require the two straight off disk, in separate scopes).
+     * and `keepMinVoters` how many of the roster must have voted on a night
+     * before it counts as the record. Both are passed in rather than computed
+     * here so this file stays free of CONFIG and of Quarter (tests require the
+     * two straight off disk, in separate scopes). keepMinVoters defaults to 0,
+     * which protects the best past night unconditionally -- the older, more
+     * cautious behaviour, and the safer thing to fall back to.
      */
-    function sweepable(proposals, todayStr, cutoffStr, roster) {
+    function sweepable(proposals, todayStr, cutoffStr, roster, keepMinVoters) {
         const pastDue = {};
         Object.keys(proposals || {}).forEach(id => {
             const p = proposals[id];
@@ -113,12 +125,14 @@ const Scoring = (() => {
         });
 
         const ids = Object.keys(pastDue);
-        // One past night is the record, not clutter. Nothing to do.
-        if (ids.length < 2) return [];
+        if (!ids.length) return [];
 
-        const keep = rankProposals(pastDue, roster)[0];
+        const min = Number.isFinite(keepMinVoters) ? keepMinVoters : 0;
+        const best = rankProposals(pastDue, roster)[0];
+        const keepId = (best && best.voters.length >= min) ? best.id : null;
+
         return ids
-            .filter(id => id !== keep.id && pastDue[id].date <= cutoffStr)
+            .filter(id => id !== keepId && pastDue[id].date <= cutoffStr)
             .sort();
     }
 

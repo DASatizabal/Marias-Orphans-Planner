@@ -92,9 +92,39 @@ eq(S.sweepable(sweepBoard,'2026-10-02',cut,R).includes('went'),false,
 eq(S.sweepable(sweepBoard,'2026-10-06',Q.minusDays('2026-10-06',3),R),['fresh','gone'],
    'grace expiring sweeps the rest, never the record');
 
-// a lone past night is the record, not clutter
+// a lone past night is the record, not clutter -- while the bar is 0
 eq(S.sweepable({only:{date:'2026-09-01',votes:{}}},'2026-10-02','2026-09-29',R),[],
-   'a single past night is never swept');
+   'a single past night is never swept at bar 0');
+
+// --- the quorum bar ---
+// 'went' has 3 voters. At a bar of 5 it is a dead suggestion, not a record.
+eq(S.sweepable(sweepBoard,'2026-10-02',cut,R,5),['gone','went'],
+   'bar 5: a 3-vote night is not the record and sweeps too');
+eq(S.sweepable(sweepBoard,'2026-10-02',cut,R,3),['gone'],
+   'bar 3: 3 voters is exactly enough to be spared');
+eq(S.sweepable(sweepBoard,'2026-10-02',cut,R,0),['gone'],
+   'bar 0: the best past night is spared unconditionally');
+
+// the bar is on the BEST past night, and nothing else is protected by clearing it
+const quorum = {
+  big  :{date:'2026-09-05',createdAt:'a',votes:{David:'yes',Maria:'yes',Luz:'yes',Laura:'yes',Bernice:'yes'}},
+  small:{date:'2026-09-06',createdAt:'b',votes:{David:'yes',Maria:'yes',Luz:'yes',Laura:'yes',Bernice:'yes',Crisveth:'yes'}}
+};
+eq(S.sweepable(quorum,'2026-10-02','2026-09-29',R,5),['big'],
+   'only the top past night is spared, however well others polled');
+
+// a lone past night below the bar now goes, which is the whole point
+eq(S.sweepable({only:{date:'2026-09-03',createdAt:'a',votes:{David:'yes'}}},
+               '2026-09-18','2026-09-15',R,5),['only'],
+   'bar 5: a lone 1-vote night is swept, not given tenure');
+eq(S.sweepable({only:{date:'2026-09-03',createdAt:'a',votes:{David:'yes'}}},
+               '2026-09-18','2026-09-15',R,0),[],
+   'bar 0: the same night would have stayed forever');
+
+// grace still outranks the bar: nothing sweeps before its time
+eq(S.sweepable({only:{date:'2026-09-17',createdAt:'a',votes:{David:'yes'}}},
+               '2026-09-18','2026-09-15',R,5),[],
+   'a night below the bar still waits out its grace');
 eq(S.sweepable({},'2026-10-02','2026-09-29',R),[],'empty board sweeps nothing');
 eq(S.sweepable(null,'2026-10-02','2026-09-29',R),[],'missing board sweeps nothing');
 

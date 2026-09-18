@@ -304,8 +304,18 @@ const Store = {
         const grace = (typeof CONFIG !== 'undefined' && Number.isFinite(CONFIG.SWEEP_GRACE_DAYS))
             ? CONFIG.SWEEP_GRACE_DAYS
             : 3;
+        // Clamped to the roster. A bar nobody can clear would quietly disable
+        // the protection for good -- shrink the roster to four and a "5 of 6"
+        // rule becomes unsatisfiable, and every quarter starts archiving with
+        // no record of anything. Clamping turns it into "everyone".
+        const keepMin = Math.min(
+            (typeof CONFIG !== 'undefined' && Number.isFinite(CONFIG.SWEEP_KEEP_MIN_VOTERS))
+                ? CONFIG.SWEEP_KEEP_MIN_VOTERS
+                : 0,
+            roster.length);
+
         const ids = Scoring.sweepable(
-            data.dateProposals, todayStr, Quarter.minusDays(todayStr, grace), roster);
+            data.dateProposals, todayStr, Quarter.minusDays(todayStr, grace), roster, keepMin);
         if (!ids.length) return 0;
 
         const args = [];

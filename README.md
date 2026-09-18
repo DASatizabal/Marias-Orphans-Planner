@@ -3,7 +3,7 @@
 A one-page app for six friends who keep saying they should get a drink and never
 manage to pick a night.
 
-**Version:** 1.4.0 · **Live:** https://dasatizabal.github.io/Marias-Orphans-Planner/
+**Version:** 1.5.0 · **Live:** https://dasatizabal.github.io/Marias-Orphans-Planner/
 
 The version above is also on the gate screen and in the footer. If the app shows
 an older one than this file, that is the browser cache, not a failed deploy —
@@ -220,10 +220,13 @@ them, the same way the rollover happens — no cron, no organizer step.
 
 Two rules keep it from eating something that matters:
 
-- **One past night always survives** — the best-scoring one. That is the night
+- **One past night can survive** — the best-scoring one, *if* at least
+  `SWEEP_KEEP_MIN_VOTERS` of the roster voted on it (5 of 6). That is the night
   the group actually went out, and it is what `archiveIfStale()` freezes into
-  the quarter's history. A board with only one past night on it is never swept
-  at all.
+  the quarter's history. Being the best of a bad lot is not enough: a night one
+  person proposed and nobody answered is a dead suggestion, and sparing it would
+  hand it permanent tenure, since only another past night could ever displace
+  it.
 - **The survivor is ranked among past nights only**, never against the whole
   board. Rank it against everything and a next-quarter date pulling five yeses —
   which the lookahead makes ordinary in a quarter's last month — would make
@@ -233,6 +236,15 @@ Two rules keep it from eating something that matters:
 who has not opened the app in a couple of days can still see how the vote landed.
 Set it to `0` to sweep from the next day, or set `SWEEP_PAST_DUE: false` to keep
 every night on the board forever.
+
+**Know the trade at 5.** Near-unanimous is a high bar for six people. A night the
+group took on a quiet four-vote yes is not protected — it sweeps three days
+later, and if that was the quarter's only outing, the quarter archives with no
+result and History reads "Never settled on anything". Lower
+`SWEEP_KEEP_MIN_VOTERS` to 3 to match `MIN_VOTERS_FOR_CONFIDENCE`, or to 0 to
+spare the best past night unconditionally. It is clamped to the roster size at
+runtime, so a bar nobody can clear cannot quietly disable the protection for
+good.
 
 Archived quarters are never swept. Their boards are the history.
 

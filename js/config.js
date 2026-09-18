@@ -4,7 +4,7 @@
 // !! Shown on the gate screen and in the footer, and repeated at the top of
 // README.md. Bump both together -- a README that disagrees with the running app
 // is how you end up debugging a deploy that was fine all along.
-const APP_VERSION = '1.4.0';
+const APP_VERSION = '1.5.0';
 
 // ---------------------------------------------------------------------------
 // THE ROSTER
@@ -148,8 +148,23 @@ const CONFIG = {
     // SWEEP_GRACE_DAYS is how long a spent night lingers first, so somebody who
     // has not opened the app in a couple of days can still see how the vote
     // landed before it goes. 0 sweeps from the next day.
+    // SWEEP_KEEP_MIN_VOTERS is the bar a past night must clear to count as the
+    // record and be spared. Being the best of a bad lot is not enough: a night
+    // one person proposed and nobody answered is a dead suggestion, and
+    // protecting it hands it permanent tenure on the board.
+    //
+    // KNOW THE TRADE AT 5. It is near-unanimous for a roster of six, so a night
+    // the group took on a quiet four-vote yes is NOT protected -- it sweeps
+    // three days later, and if that was the quarter's only outing the quarter
+    // then archives with no result and History reads "Never settled on
+    // anything". Lower it to 3 to match MIN_VOTERS_FOR_CONFIDENCE, or to 0 to
+    // protect the best past night unconditionally.
+    //
+    // Clamped to the roster size at runtime, so a bar nobody can clear cannot
+    // silently disable the protection for good.
     SWEEP_PAST_DUE: true,
     SWEEP_GRACE_DAYS: 3,
+    SWEEP_KEEP_MIN_VOTERS: 5,
 
     // How many past quarters the History view lists.
     //
