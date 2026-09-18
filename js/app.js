@@ -291,7 +291,21 @@ const App = {
 
         // A wrapped quarter shows what was frozen at archive time, not a fresh
         // recount -- history must not drift when the scoring code changes.
-        if (this.state.readOnly && data && data.result) {
+        if (this.state.readOnly && data && data.result && data.result.movedTo) {
+            const r = data.result;
+            el.innerHTML = `
+                <div class="glass rounded-2xl p-5">
+                    <p class="text-xs uppercase tracking-wider text-slate-500 mb-2">How it ended</p>
+                    <h2 class="text-xl font-bold">Carried into ${this.esc(r.movedLabel || r.movedTo)}</h2>
+                    <p class="text-slate-400 mt-0.5">${r.movedCount} night${r.movedCount === 1 ? '' : 's'} moved across with their votes</p>
+                    <p class="text-xs text-slate-500 mt-3">
+                        <a class="underline hover:text-slate-300" href="?q=${this.esc(r.movedTo)}">Open ${this.esc(r.movedLabel || r.movedTo)}</a>
+                    </p>
+                </div>`;
+            return;
+        }
+
+        if (this.state.readOnly && data && data.result && data.result.date) {
             const r = data.result;
             el.innerHTML = `
                 <div class="glass rounded-2xl p-5">
@@ -513,8 +527,11 @@ const App = {
                             <div class="min-w-0">
                                 <p class="font-semibold">${this.esc(q.label)}</p>
                                 <p class="text-sm text-slate-400 truncate">${
-                                    r ? `${this.esc(Quarter.prettyDate(r.date))}${r.venueName ? ' · ' + this.esc(r.venueName) : ''}`
-                                      : 'Never settled on anything'}</p>
+                                    r && r.date
+                                      ? `${this.esc(Quarter.prettyDate(r.date))}${r.venueName ? ' · ' + this.esc(r.venueName) : ''}`
+                                      : r && r.movedTo
+                                        ? `Carried into ${this.esc(r.movedLabel || r.movedTo)}`
+                                        : 'Never settled on anything'}</p>
                             </div>
                             <i data-lucide="chevron-right" class="w-4 h-4 text-slate-600 shrink-0"></i>
                         </div>

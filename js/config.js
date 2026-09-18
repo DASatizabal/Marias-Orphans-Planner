@@ -1,7 +1,7 @@
 // Configuration for Maria's Orphans Planner
 // Quarterly happy-hour date + venue voting for a fixed group of friends.
 
-const APP_VERSION = '1.3.0';
+const APP_VERSION = '1.3.1';
 
 // ---------------------------------------------------------------------------
 // THE ROSTER
@@ -133,7 +133,14 @@ const CONFIG = {
     MAX_VENUE_NOTE: 200,
 
     // How many past quarters the History view lists.
-    HISTORY_LIMIT: 12,
+    //
+    // Four years of them. It used to be twelve, on the reasoning that a quarter
+    // is an outing and three years of outings is plenty to scroll. Carrying the
+    // poll across a rollover broke that one-to-one: a quarter whose nights all
+    // moved into the next one is a real row in this list with no happy hour
+    // behind it. Sixteen keeps roughly the same number of ACTUAL outings in
+    // view once a few of those rows appear.
+    HISTORY_LIMIT: 16,
 
     // Public URL, used by the Share button.
     APP_URL: 'https://dasatizabal.github.io/Marias-Orphans-Planner/',

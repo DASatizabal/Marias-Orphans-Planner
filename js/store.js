@@ -372,6 +372,12 @@ const Store = {
         const win = ranked[0] || null;
         const venue = venues[0] || null;
 
+        // Three endings, not two. A quarter that never settled on anything and a
+        // quarter whose every night moved into the next one both leave no
+        // winner behind, and History would file them under the same sentence
+        // -- which is a lie about the second one. `movedTo` is what tells them
+        // apart. It rides inside `result` rather than as a field of its own
+        // because firestore.rules pins the top-level key set.
         const result = win ? {
             date: win.date,
             time: win.time || '',
@@ -382,7 +388,13 @@ const Store = {
             venueId: venue ? venue.id : null,
             venueUpvotes: venue ? venue.count : 0,
             frozenAt: new Date().toISOString()
-        } : null;
+        } : (carriedIds.length && nextInfo ? {
+            date: null,
+            movedTo: nextInfo.quarterId,
+            movedLabel: nextInfo.label,
+            movedCount: carriedIds.length,
+            frozenAt: new Date().toISOString()
+        } : null);
 
         const args = [
             new firebase.firestore.FieldPath('status'), 'archived',

@@ -210,6 +210,24 @@ Three details worth knowing:
 Set the flag to `false` and a quarter ends the old way: everything freezes where
 it sits and the new quarter opens empty.
 
+A quarter therefore has **three** endings in History, not two:
+
+| Frozen `result` | History reads |
+|---|---|
+| A winning night | `Fri, Sep 25 · The Alibi` |
+| `movedTo` set | `Carried into Q4 2026` |
+| `null` | `Never settled on anything` |
+
+The middle row is the one the carry added. Without it a quarter whose nights all
+moved on would be filed under "never settled", which is untrue — the group
+settled, the night just belongs to the next quarter. `movedTo` rides inside
+`result` rather than as a top-level field because `firestore.rules` pins the
+top-level key set, and widening it would mean a rules re-publish.
+
+`CONFIG.HISTORY_LIMIT` is 16 (four years). It was twelve, on the reasoning that
+a quarter is an outing; the carry broke that one-to-one, since a carried-out
+quarter is a row with no happy hour behind it.
+
 ## Security model
 
 Read this before you assume the passcode protects anything.
