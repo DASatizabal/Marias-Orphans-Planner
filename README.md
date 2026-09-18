@@ -3,7 +3,11 @@
 A one-page app for six friends who keep saying they should get a drink and never
 manage to pick a night.
 
-**Live:** https://dasatizabal.github.io/Marias-Orphans-Planner/
+**Version:** 1.4.0 · **Live:** https://dasatizabal.github.io/Marias-Orphans-Planner/
+
+The version above is also on the gate screen and in the footer. If the app shows
+an older one than this file, that is the browser cache, not a failed deploy —
+see [Why the app still shows the old version](#why-the-app-still-shows-the-old-version).
 
 Open the link, enter the group passcode, tap your name, and vote. Anyone can put
 a date on the board or suggest a bar. The page tallies everything live and shows
@@ -67,6 +71,29 @@ Two extra lines show up when they are true, and they are the useful part:
 - *"Bernice can't make Sep 12."* — the winning date has a `no` on it. Surfaced
   deliberately: a winner nobody checks the no-list on is how you leave a friend
   behind.
+
+### Why the app still shows the old version
+
+GitHub Pages serves these files with `Cache-Control: max-age=600`, so for ten
+minutes after a push a browser can keep using the copy it already has. The
+service worker is network-first and does not cache-pin anybody to an old build,
+but its `fetch()` still goes through that same HTTP cache, so it sees the stale
+copy too.
+
+Nothing is broken. Either wait out the ten minutes, or force it:
+
+- **Desktop:** hard reload — Ctrl+Shift+R, or Cmd+Shift+R on a Mac.
+- **iOS Safari:** close the tab and open the link again.
+- **Installed as an app:** force-quit it from the app switcher and reopen.
+
+To check what is actually deployed, independent of any browser:
+
+```sh
+curl -s "https://dasatizabal.github.io/Marias-Orphans-Planner/js/config.js?cb=$(date +%s)" | grep APP_VERSION
+```
+
+The `?cb=` is what makes it a real answer — without it you are asking your own
+cache, which is the thing under suspicion.
 
 ## Setup
 

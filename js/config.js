@@ -1,6 +1,9 @@
 // Configuration for Maria's Orphans Planner
 // Quarterly happy-hour date + venue voting for a fixed group of friends.
 
+// !! Shown on the gate screen and in the footer, and repeated at the top of
+// README.md. Bump both together -- a README that disagrees with the running app
+// is how you end up debugging a deploy that was fine all along.
 const APP_VERSION = '1.4.0';
 
 // ---------------------------------------------------------------------------
